@@ -1,0 +1,8 @@
+[
+  {
+    "id": "01-wave-propagation",
+    "title": "Sample 01: 1D Wave Propagation",
+    "path": "./samples/01-wave-propagation.js",
+    "className": "Sample01"
+  }
+]
