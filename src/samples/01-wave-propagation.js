@@ -4,13 +4,9 @@ export class Sample01 {
   constructor(canvas) {
     this.canvas = canvas
     this.ctx = canvas.getContext("2d")
-    this.waveX = { x: 0.0, speed: 1 } //波 1
-    this.waveY = { x: 1.0, speed: -1.0 } //波 2
-    this.waveLengthX = 0.8 //波長 1
-    this.waveLengthY = 0 //1.2
-    this.maxHeightX = 0.5 //高さ 1
-    this.maxHeightY = 0 //0.4
-
+    this.waveA = { x: 0.0, speed: 1, length: 0.8, maxHeight: 0.5 } //波 1
+    this.waveB = { x: 1.0, speed: -1.0, length: 1.2, maxHeight: 0.4 } //波 2
+    this.waveC = { x: 0.4, speed: 0.4, length: 1.0, maxHeight: 0.3 } //波 3
     this.heightField = new Float64Array(kBufferSize)
     this.timeInterval = 1.0 / 60 // 60 FPS
     this.animationFrameId = null
@@ -27,10 +23,10 @@ export class Sample01 {
     }
   }
 
-  accumulateWave(x, waveLength, maxHeight) {
-    const quarterWaveLength = 0.25 * waveLength
-    const start = Math.floor((x - quarterWaveLength) * kBufferSize)
-    const end = Math.floor((x + quarterWaveLength) * kBufferSize)
+  accumulateWave(wave) {
+    const quarterWaveLength = 0.25 * wave.length
+    const start = Math.floor((wave.x - quarterWaveLength) * kBufferSize)
+    const end = Math.floor((wave.x + quarterWaveLength) * kBufferSize)
 
     for (let i = start; i < end; ++i) {
       let iNew = i
@@ -40,9 +36,9 @@ export class Sample01 {
         iNew = 2 * kBufferSize - i - 1
       }
 
-      const distance = Math.abs((i + 0.5) / kBufferSize - x)
+      const distance = Math.abs((i + 0.5) / kBufferSize - wave.x)
       const height =
-        maxHeight *
+        wave.maxHeight *
         0.5 *
         (Math.cos(Math.min((distance * Math.PI) / quarterWaveLength, Math.PI)) +
           1.0)
@@ -86,16 +82,27 @@ export class Sample01 {
   }
 
   start() {
-    const loop = () => {
-      this.updateWave(this.timeInterval, this.waveX)
-      this.updateWave(this.timeInterval, this.waveY)
+    const chkA = document.getElementById("toggleWaveA")
+    const chkB = document.getElementById("toggleWaveB")
+    const chkC = document.getElementById("toggleWaveC")
 
+    const loop = () => {
       this.heightField.fill(0.0)
-      this.accumulateWave(this.waveX.x, this.waveLengthX, this.maxHeightX)
-      this.accumulateWave(this.waveY.x, this.waveLengthY, this.maxHeightY)
+
+      if (chkA.checked) {
+        this.updateWave(this.timeInterval, this.waveA)
+        this.accumulateWave(this.waveA)
+      }
+      if (chkB.checked) {
+        this.updateWave(this.timeInterval, this.waveB)
+        this.accumulateWave(this.waveB)
+      }
+      if (chkC.checked) {
+        this.updateWave(this.timeInterval, this.waveC)
+        this.accumulateWave(this.waveC)
+      }
 
       this.draw()
-
       this.animationFrameId = requestAnimationFrame(loop)
     }
     loop()
