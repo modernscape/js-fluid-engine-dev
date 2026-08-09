@@ -31,6 +31,9 @@
         border-radius: 4px;
         font-size: 1rem;
       }
+      .hide {
+        opacity: 0;
+      }
     </style>
   </head>
   <body>
@@ -40,12 +43,16 @@
     </div>
 
     <canvas id="simulationCanvas" width="800" height="400"></canvas>
-    <div>
+
+    <div id="wave-check">
       <label><input type="checkbox" id="toggleWaveA" checked /> 波A</label>
       <label><input type="checkbox" id="toggleWaveB" checked /> 波B</label>
       <label><input type="checkbox" id="toggleWaveC" checked /> 波C</label>
     </div>
 
     <script type="module" src="/src/main.js"></script>
+    <!-- <script>
+      document.getElementById("wave-check").style.display = "none"
+    </script> -->
   </body>
 </html>

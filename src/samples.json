@@ -4,5 +4,11 @@
     "title": "Sample 01: 1D Wave Propagation",
     "path": "./samples/01-wave-propagation.js",
     "className": "Sample01"
+  },
+  {
+    "id": "02-sine-animation",
+    "title": "Sample 02: Sine Animation with Decay",
+    "path": "./samples/02-SineAnimation_p67.js",
+    "className": "SineAnimationSample"
   }
 ]

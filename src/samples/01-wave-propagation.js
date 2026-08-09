@@ -85,6 +85,7 @@ export class Sample01 {
     const chkA = document.getElementById("toggleWaveA")
     const chkB = document.getElementById("toggleWaveB")
     const chkC = document.getElementById("toggleWaveC")
+    document.getElementById("wave-check").style.opacity = "1.0"
 
     const loop = () => {
       this.heightField.fill(0.0)
