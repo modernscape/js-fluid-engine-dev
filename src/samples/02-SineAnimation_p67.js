@@ -21,20 +21,20 @@ class Frame {
 // -----------------------------------------------------------------
 class SineAnimation {
   constructor() {
-    this.x = 0.0
+    this.y = 0.0
   }
   update(frame) {
-    this.x = Math.sin(10.0 * frame.timeInSeconds())
+    this.y = Math.sin(10.0 * frame.timeInSeconds())
   }
 }
 
 class SineWithDecayAnimation {
   constructor() {
-    this.x = 0.0
+    this.y = 0.0
   }
   update(frame) {
     const decay = Math.exp(-frame.timeInSeconds())
-    this.x = Math.sin(10.0 * frame.timeInSeconds()) * decay
+    this.y = Math.sin(10.0 * frame.timeInSeconds()) * decay
   }
 }
 
@@ -110,8 +110,8 @@ export class SineAnimationSample {
       this.sineAnim.update(this.frame)
       this.decayAnim.update(this.frame)
 
-      this.historySine.push(this.sineAnim.x)
-      this.historyDecay.push(this.decayAnim.x)
+      this.historySine.push(this.sineAnim.y)
+      this.historyDecay.push(this.decayAnim.y)
 
       this.draw()
 
