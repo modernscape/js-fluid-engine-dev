@@ -2,19 +2,19 @@
   {
     "id": "01-wave-propagation",
     "title": "Sample 01: 1D Wave Propagation",
-    "path": "./samples/01-wave-propagation.js",
+    "filename": "01-wave-propagation.js",
     "className": "Sample01"
   },
   {
     "id": "02-sine-animation",
     "title": "Sample 02: Sine Animation with Decay",
-    "path": "./samples/02-SineAnimation_p67.js",
+    "filename": "02-SineAnimation_p67.js",
     "className": "SineAnimationSample"
   },
   {
     "id": "03-physics-animation",
     "title": "Sample 03: Physics Animation (Substeps)",
-    "path": "./samples/03-PhysicsAnimation.js",
+    "filename": "03-PhysicsAnimation.js",
     "className": "PhysicsAnimationSample"
   }
 ]
