@@ -185,8 +185,9 @@ export class PhysicsAnimationSample extends PhysicsAnimation {
       this.draw()
       this.frame.advance()
 
-      if (this.frame.index > 300) {
+      if (this.frame.index > 450) {
         this.frame.index = 0
+        this._currentFrame.index = -1 // 450を超えたら内部状態もリセット
         this.posY = 50.0
         this.velocity = 0.0
       }
