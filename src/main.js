@@ -5,6 +5,9 @@ const selector = document.getElementById("sampleSelector")
 
 let currentSample = null
 
+// ローカルストレージの保存用キー
+const STORAGE_KEY = "selected_fluid_sample"
+
 // 1. JSONを基にセレクトボックスの <option> を自動生成
 function initSelector() {
   samplesConfig.forEach((sample) => {
@@ -13,6 +16,16 @@ function initSelector() {
     option.textContent = sample.title
     selector.appendChild(option)
   })
+
+  // 保存されている値があれば、それをセレクトボックスの初期選択にする
+  const savedSampleId = localStorage.getItem(STORAGE_KEY)
+  if (savedSampleId) {
+    // 該当するIDが設定内に存在するか確認してから選択を反映
+    const exists = samplesConfig.some((s) => s.id === savedSampleId)
+    if (exists) {
+      selector.value = savedSampleId
+    }
+  }
 }
 
 // 2. 選択されたサンプルを動的に読み込んで実行
@@ -47,6 +60,16 @@ async function loadSample(id) {
 initSelector()
 loadSample(selector.value)
 
+// 3. セレクトボックスが変更されたら保存して読み込み直す
 selector.addEventListener("change", (e) => {
-  loadSample(e.target.value)
+  const selectedId = e.target.value
+
+  // localStorageに現在の選択IDを保存
+  localStorage.setItem(STORAGE_KEY, selectedId)
+
+  loadSample(selectedId)
 })
+
+// selector.addEventListener("change", (e) => {
+//   loadSample(e.target.value)
+// })
