@@ -10,5 +10,11 @@
     "title": "Sample 02: Sine Animation with Decay",
     "path": "./samples/02-SineAnimation_p67.js",
     "className": "SineAnimationSample"
+  },
+  {
+    "id": "03-physics-animation",
+    "title": "Sample 03: Physics Animation (Substeps)",
+    "path": "./samples/03-PhysicsAnimation.js",
+    "className": "PhysicsAnimationSample"
   }
 ]
