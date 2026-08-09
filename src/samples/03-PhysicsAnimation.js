@@ -151,18 +151,23 @@ export class PhysicsAnimationSample extends PhysicsAnimation {
     const { ctx, canvas } = this
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+    // 床のライン
+    const floorY = canvas.height - 30
     ctx.strokeStyle = "#334155"
     ctx.lineWidth = 1
     ctx.beginPath()
-    ctx.moveTo(0, canvas.height - 30)
-    ctx.lineTo(canvas.width, canvas.height - 30)
+    ctx.moveTo(0, floorY)
+    ctx.lineTo(canvas.width, floorY)
     ctx.stroke()
 
+    // 落下するボールを描画（半径 20px 分を上にずらして、床の上に綺麗に乗せる）
+    const radius = 20
     ctx.fillStyle = "#38bdf8"
     ctx.beginPath()
-    ctx.arc(canvas.width / 2, this.posY, 20, 0, Math.PI * 2)
+    ctx.arc(canvas.width / 2, this.posY - radius, radius, 0, Math.PI * 2)
     ctx.fill()
 
+    // 状態テキスト
     ctx.fillStyle = "#94a3b8"
     ctx.font = "14px sans-serif"
     ctx.fillText(`Time: ${this.currentTimeInSeconds().toFixed(2)} s`, 20, 30)
