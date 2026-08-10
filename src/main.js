@@ -49,8 +49,8 @@ async function loadSample(id) {
         waveCheck.id = "wave-check"
         waveCheck.innerHTML = `
           <label><input type="checkbox" id="toggleWaveA" checked /> 波A</label>
-          <label><input type="checkbox" id="toggleWaveB" checked /> 波B</label>
-          <label><input type="checkbox" id="toggleWaveC" checked /> 波C</label>
+          <label><input type="checkbox" id="toggleWaveB" /> 波B</label>
+          <label><input type="checkbox" id="toggleWaveC" /> 波C</label>
         `
         document.body.appendChild(waveCheck)
       }
