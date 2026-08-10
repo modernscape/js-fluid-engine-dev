@@ -178,7 +178,7 @@ export class MassSpringAnimationSample extends PhysicsAnimation {
     // 質点（ポイント）を描画
     for (let i = 0; i < this.positions.length; ++i) {
       const p = this.positions[i]
-      ctx.fillStyle = i === 0 ? "#ef4444" : "#1e293b" // 先頭の固定点は赤色
+      ctx.fillStyle = i === 0 ? "#ef4444" : "#fef93b" // 先頭の固定点は赤色
       ctx.beginPath()
       ctx.arc(toScreenX(p.x), toScreenY(p.y), i === 0 ? 6 : 4, 0, Math.PI * 2)
       ctx.fill()
