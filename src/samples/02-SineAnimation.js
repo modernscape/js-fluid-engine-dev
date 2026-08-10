@@ -1,42 +1,6 @@
-// -----------------------------------------------------------------
-// Frame クラス
-// -----------------------------------------------------------------
-class Frame {
-  constructor(newIndex = 0, newTimeIntervalInSeconds = 1.0 / 60.0) {
-    this.index = newIndex
-    this.timeIntervalInSeconds = newTimeIntervalInSeconds
-  }
-
-  timeInSeconds() {
-    return this.index * this.timeIntervalInSeconds
-  }
-
-  advance() {
-    this.index++
-  }
-}
-
-// -----------------------------------------------------------------
-// アニメーションクラス群
-// -----------------------------------------------------------------
-class SineAnimation {
-  constructor() {
-    this.y = 0.0
-  }
-  update(frame) {
-    this.y = Math.sin(10.0 * frame.timeInSeconds())
-  }
-}
-
-class SineWithDecayAnimation {
-  constructor() {
-    this.y = 0.0
-  }
-  update(frame) {
-    const decay = Math.exp(-frame.timeInSeconds())
-    this.y = Math.sin(10.0 * frame.timeInSeconds()) * decay
-  }
-}
+import { Frame } from "../utils/Frame.js"
+import { SineAnimation } from "../utils/SineAnimation.js"
+import { SineWithDecayAnimation } from "../utils/SineAnimation.js"
 
 // -----------------------------------------------------------------
 // メインのサンプルクラス (必ずこの名前でエクスポート)

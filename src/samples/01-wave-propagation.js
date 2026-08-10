@@ -82,17 +82,6 @@ export class Sample01 {
   }
 
   start() {
-    if (!document.getElementById("wave-check")) {
-      const waveCheck = document.createElement("div")
-      waveCheck.id = "wave-check"
-
-      waveCheck.innerHTML = `
-        <label><input type="checkbox" id="toggleWaveA" checked /> 波A</label>
-        <label><input type="checkbox" id="toggleWaveB" checked /> 波B</label>
-        <label><input type="checkbox" id="toggleWaveC" checked /> 波C</label>
-      `
-      document.body.appendChild(waveCheck)
-    }
     const chkA = document.getElementById("toggleWaveA")
     const chkB = document.getElementById("toggleWaveB")
     const chkC = document.getElementById("toggleWaveC")

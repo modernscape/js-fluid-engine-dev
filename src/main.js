@@ -43,6 +43,21 @@ async function loadSample(id) {
       throw new Error(`Sample file not found in glob map: ${filePath}`)
     }
 
+    if (filePath === "./samples/01-wave-propagation.js") {
+      if (!document.getElementById("wave-check")) {
+        const waveCheck = document.createElement("div")
+        waveCheck.id = "wave-check"
+        waveCheck.innerHTML = `
+          <label><input type="checkbox" id="toggleWaveA" checked /> 波A</label>
+          <label><input type="checkbox" id="toggleWaveB" checked /> 波B</label>
+          <label><input type="checkbox" id="toggleWaveC" checked /> 波C</label>
+        `
+        document.body.appendChild(waveCheck)
+      }
+    } else {
+      document.getElementById("wave-check")?.remove()
+    }
+
     const module = await importer()
     const SampleClass = module[sampleMeta.className]
 
