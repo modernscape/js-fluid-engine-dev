@@ -16,5 +16,11 @@
     "title": "Sample 03: Physics Animation (Substeps)（p69）",
     "filename": "03-PhysicsAnimation.js",
     "className": "PhysicsAnimationSample"
+  },
+  {
+    "id": "04-mass-spring",
+    "title": "Sample 04: Mass-Spring Chain Animation",
+    "filename": "04-MassSpringAnimation.js",
+    "className": "MassSpringAnimationSample"
   }
 ]

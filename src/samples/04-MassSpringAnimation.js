@@ -1,0 +1,248 @@
+import { PhysicsAnimation } from "../utils/PhysicsAnimation.js"
+import { Frame } from "../utils/Frame.js"
+
+// 簡易3次元ベクトルクラス（2D描画用だがC++のVector3D概念に合わせる）
+class Vector3D {
+  constructor(x = 0, y = 0, z = 0) {
+    this.x = x
+    this.y = y
+    this.z = z
+  }
+
+  add(v) {
+    return new Vector3D(this.x + v.x, this.y + v.y, this.z + v.z)
+  }
+  sub(v) {
+    return new Vector3D(this.x - v.x, this.y - v.y, this.z - v.z)
+  }
+  scale(s) {
+    return new Vector3D(this.x * s, this.y * s, this.z * s)
+  }
+  length() {
+    return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z)
+  }
+
+  normalized() {
+    const len = this.length()
+    return len > 0.0
+      ? new Vector3D(this.x / len, this.y / len, this.z / len)
+      : new Vector3D()
+  }
+}
+
+export class MassSpringAnimationSample extends PhysicsAnimation {
+  constructor(canvas) {
+    super()
+    this.canvas = canvas
+    this.ctx = canvas.getContext("2d")
+
+    this.frame = new Frame(0, 1.0 / 60.0)
+    this.setNumberOfFixedSubTimeSteps(8) // 高精度計算のための8分割サブステップ
+
+    // 物理パラメータ（C++コードの初期値に準拠）
+    this.mass = 1.0
+    this.gravity = new Vector3D(0.0, -9.8, 0.0)
+    this.stiffness = 500.0
+    this.restLength = 1.0
+    this.dampingCoefficient = 1.0
+    this.dragCoefficient = 0.1
+
+    this.floorPositionY = -7.0
+    this.restitutionCoefficient = 0.3
+
+    // 風の力 (ConstantVectorField3 の再現)
+    this.wind = new Vector3D(30.0, 0.0, 0.0)
+
+    this.positions = []
+    this.velocities = []
+    this.forces = []
+    this.edges = []
+    this.constraints = []
+
+    this.makeChain(10)
+
+    // 先頭のポイント(index 0)を固定（Constraintの再現）
+    this.constraints.push({
+      pointIndex: 0,
+      fixedPosition: new Vector3D(0, 0, 0),
+      fixedVelocity: new Vector3D(0, 0, 0),
+    })
+
+    this.animationFrameId = null
+  }
+
+  makeChain(numberOfPoints) {
+    if (numberOfPoints === 0) return
+    const numberOfEdges = numberOfPoints - 1
+
+    this.positions = new Array(numberOfPoints)
+    this.velocities = new Array(numberOfPoints)
+    this.forces = new Array(numberOfPoints)
+    this.edges = new Array(numberOfEdges)
+
+    for (let i = 0; i < numberOfPoints; ++i) {
+      // 画面上で見やすいようにスケーリングとオフセットを調整
+      this.positions[i] = new Vector3D(-static_cast_i(i) * 1.5, 0, 0)
+      this.velocities[i] = new Vector3D()
+      this.forces[i] = new Vector3D()
+    }
+
+    for (let i = 0; i < numberOfEdges; ++i) {
+      this.edges[i] = { first: i, second: i + 1 }
+    }
+  }
+
+  // 物理演算のサブステップごとに呼ばれるコールバック
+  onAdvanceTimeStep(timeIntervalInSeconds) {
+    const numberOfPoints = this.positions.length
+    const numberOfEdges = this.edges.length
+
+    // 1. 力的要因の計算（重力・空気抵抗）
+    for (let i = 0; i < numberOfPoints; ++i) {
+      // 重力
+      let f = this.gravity.scale(this.mass)
+
+      // 空気抵抗 ＆ 風の影響
+      let relativeVel = this.velocities[i]
+      if (this.wind) {
+        relativeVel = relativeVel.sub(this.wind)
+      }
+      f = f.sub(relativeVel.scale(this.dragCoefficient))
+      this.forces[i] = f
+    }
+
+    // 2. バネの力 ＆ 減衰力の計算
+    for (let i = 0; i < numberOfEdges; ++i) {
+      const p0 = this.edges[i].first
+      const p1 = this.edges[i].second
+
+      const pos0 = this.positions[p0]
+      const pos1 = this.positions[p1]
+      const r = pos0.sub(pos1)
+      const distance = r.length()
+
+      if (distance > 0.0) {
+        // フックの法則 (バネ弾性力)
+        const force = r
+          .normalized()
+          .scale(-this.stiffness * (distance - this.restLength))
+        this.forces[p0] = this.forces[p0].add(force)
+        this.forces[p1] = this.forces[p1].sub(force)
+      }
+
+      // 速度減衰（ダンピング）
+      const vel0 = this.velocities[p0]
+      const vel1 = this.velocities[p1]
+      const relativeVel0 = vel0.sub(vel1)
+      const damping = relativeVel0.scale(-this.dampingCoefficient)
+      this.forces[p0] = this.forces[p0].add(damping)
+      this.forces[p1] = this.forces[p1].sub(damping)
+    }
+
+    // 3. 状態の更新（積分 ＆ 床との衝突判定）
+    for (let i = 0; i < numberOfPoints; ++i) {
+      const newAcceleration = this.forces[i].scale(1.0 / this.mass)
+      const newVelocity = this.velocities[i].add(
+        newAcceleration.scale(timeIntervalInSeconds),
+      )
+      let newPosition = this.positions[i].add(
+        newVelocity.scale(timeIntervalInSeconds),
+      )
+
+      // 床との衝突判定 (floorPositionY = -7.0)
+      if (newPosition.y < this.floorPositionY) {
+        newPosition.y = this.floorPositionY
+        if (newVelocity.y < 0.0) {
+          newVelocity.y *= -this.restitutionCoefficient
+          newPosition.y += timeIntervalInSeconds * newVelocity.y
+        }
+      }
+
+      this.velocities[i] = newVelocity
+      this.positions[i] = newPosition
+    }
+
+    // 4. 制約（ピン止め）の適用
+    for (let i = 0; i < this.constraints.length; ++i) {
+      const c = this.constraints[i]
+      this.positions[c.pointIndex] = c.fixedPosition
+      this.velocities[c.pointIndex] = c.fixedVelocity
+    }
+  }
+
+  draw() {
+    const ctx = this.ctx
+    const width = this.canvas.width
+    const height = this.canvas.height
+
+    ctx.clearRect(0, 0, width, height)
+
+    // 座標系変換のヘルパー（中央を原点、Y軸上向きに調整）
+    const toScreenX = (x) => width / 2 + x * 25
+    const toScreenY = (y) => height / 2 - y * 25
+
+    // 床を描画
+    ctx.strokeStyle = "#e2e8f0"
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    const floorScreenY = toScreenY(this.floorPositionY)
+    ctx.moveTo(0, floorScreenY)
+    ctx.lineTo(width, floorScreenY)
+    ctx.stroke()
+
+    // バネ（エッジ）を描画
+    ctx.strokeStyle = "#3b82f6"
+    ctx.lineWidth = 3
+    for (let i = 0; i < this.edges.length; ++i) {
+      const p0 = this.positions[this.edges[i].first]
+      const p1 = this.positions[this.edges[i].second]
+
+      ctx.beginPath()
+      ctx.moveTo(toScreenX(p0.x), toScreenY(p0.y))
+      ctx.lineTo(toScreenX(p1.x), toScreenY(p1.y))
+      ctx.stroke()
+    }
+
+    // 質点（ポイント）を描画
+    for (let i = 0; i < this.positions.length; ++i) {
+      const p = this.positions[i]
+      ctx.fillStyle = i === 0 ? "#ef4444" : "#1e293b" // 先頭の固定点は赤色
+      ctx.beginPath()
+      ctx.arc(toScreenX(p.x), toScreenY(p.y), i === 0 ? 6 : 4, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
+  start() {
+    this.frame = new Frame(0, 1.0 / 60.0)
+    this._currentFrame.index = -1
+
+    const loop = () => {
+      this.update(this.frame)
+      this.draw()
+      this.frame.advance()
+
+      // 360フレームを超えたらループ (C++のテスト条件に一致)
+      if (this.frame.index > 360) {
+        this.frame.index = 0
+        this._currentLevel = -1
+        this._currentFrame.index = -1
+        this.makeChain(10)
+      }
+
+      this.animationFrameId = requestAnimationFrame(loop)
+    }
+    loop()
+  }
+
+  stop() {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId)
+      this.animationFrameId = null
+    }
+  }
+}
+
+function static_cast_i(i) {
+  return Number(i)
+}

@@ -98,8 +98,6 @@ export class SineAnimationSample {
   }
 
   start() {
-    document.getElementById("wave-check").style.opacity = "0.0"
-
     const loop = () => {
       if (this.frame.index >= this.maxFrames) {
         this.frame.index = 0
