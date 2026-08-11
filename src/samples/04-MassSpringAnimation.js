@@ -93,7 +93,6 @@ export class MassSpringAnimationSample extends PhysicsAnimation {
       const pos1 = this.positions[p1] // 質点i+1の座標
       const r = pos0.sub(pos1) // p0 - p1 ２質点のベクトル差
       const distance = r.length() // ２質点の距離
-      console.log(distance < 1.0 ? "縮んでる" : "伸びてる")
 
       if (distance > 0.0) {
         // フックの法則 (バネ弾性力)
@@ -158,6 +157,8 @@ export class MassSpringAnimationSample extends PhysicsAnimation {
     // 床を描画
     ctx.strokeStyle = "#e2e8f0"
     ctx.lineWidth = 2
+    // ctx.setLineDash([5, 0])
+
     ctx.beginPath()
     const floorScreenY = toScreenY(this.floorPositionY)
     ctx.moveTo(0, floorScreenY)
@@ -167,6 +168,8 @@ export class MassSpringAnimationSample extends PhysicsAnimation {
     // バネ（エッジ）を描画
     ctx.strokeStyle = "#3b82f6"
     ctx.lineWidth = 3
+    ctx.setLineDash([3, 1])
+
     for (let i = 0; i < this.edges.length; ++i) {
       const p0 = this.positions[this.edges[i].first]
       const p1 = this.positions[this.edges[i].second]
@@ -176,6 +179,7 @@ export class MassSpringAnimationSample extends PhysicsAnimation {
       ctx.lineTo(toScreenX(p1.x), toScreenY(p1.y))
       ctx.stroke()
     }
+    ctx.setLineDash([5, 0])
 
     // 質点（ポイント）を描画
     for (let i = 0; i < this.positions.length; ++i) {
