@@ -34,6 +34,12 @@ async function loadSample(id) {
   const sampleMeta = samplesConfig.find((s) => s.id === id)
   if (!sampleMeta) return
 
+  // --- ここに追加 ---
+  const msgDiv = document.getElementById("msg")
+  if (msgDiv) {
+    msgDiv.innerHTML = sampleMeta.description || ""
+  }
+
   try {
     // Viteのマップから該当するファイルのパスを構築
     const filePath = `./samples/${sampleMeta.filename}`

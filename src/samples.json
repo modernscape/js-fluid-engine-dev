@@ -1,26 +1,30 @@
 [
   {
     "id": "01-wave-propagation",
-    "title": "Sample 01: 1D Wave Propagation（p10）",
+    "title": "Sample 01: 1D Wave Propagation（p3）",
     "filename": "01-wave-propagation.js",
-    "className": "Sample01"
+    "className": "Sample01",
+    "description": "初めての流体シュミレーター"
   },
   {
     "id": "02-sine-animation",
     "title": "Sample 02: Sine Animation with Decay（p67）",
     "filename": "02-SineAnimation.js",
-    "className": "SineAnimationSample"
+    "className": "SineAnimationSample",
+    "description": "減衰するSinカーブアニメーション"
   },
   {
     "id": "03-physics-animation",
     "title": "Sample 03: Physics Animation (Substeps)（p69）",
     "filename": "03-PhysicsAnimation.js",
-    "className": "PhysicsAnimationSample"
+    "className": "PhysicsAnimationSample",
+    "description": "物理ベースのアニメーション"
   },
   {
     "id": "04-mass-spring",
-    "title": "Sample 04: Mass-Spring Chain Animation",
+    "title": "Sample 04: Mass-Spring Chain Animation（p70）",
     "filename": "04-MassSpringAnimation.js",
-    "className": "MassSpringAnimationSample"
+    "className": "MassSpringAnimationSample",
+    "description": "10個の質点がバネで繋がった鎖のシミュレーションです。<br>重力、風、床との衝突、そして固定された先頭のポイントが高精度なサブステップで計算されます。"
   }
 ]
