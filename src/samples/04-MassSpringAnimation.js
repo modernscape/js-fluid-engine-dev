@@ -45,7 +45,7 @@ export class MassSpringAnimationSample extends PhysicsAnimation {
 
   makeChain(numberOfPoints) {
     if (numberOfPoints === 0) return
-    const numberOfEdges = numberOfPoints - 1
+    const numberOfEdges = numberOfPoints - 1 // 9
 
     this.positions = new Array(numberOfPoints)
     this.velocities = new Array(numberOfPoints)
@@ -54,13 +54,13 @@ export class MassSpringAnimationSample extends PhysicsAnimation {
 
     for (let i = 0; i < numberOfPoints; ++i) {
       // 画面上で見やすいようにスケーリングとオフセットを調整
-      this.positions[i] = new Vector3D(-static_cast_i(i) * 1.5, 0, 0)
-      this.velocities[i] = new Vector3D()
-      this.forces[i] = new Vector3D()
+      this.positions[i] = new Vector3D(-static_cast_i(i) * 1.5, 0, 0) // X座標: 0, -1.5, -3.0, -4.5, ...
+      this.velocities[i] = new Vector3D() // 速度：ベクトル
+      this.forces[i] = new Vector3D() // 力：ベクトル
     }
 
     for (let i = 0; i < numberOfEdges; ++i) {
-      this.edges[i] = { first: i, second: i + 1 }
+      this.edges[i] = { first: i, second: i + 1 } // [{0,1},{1,2},...]
     }
   }
 
@@ -72,34 +72,36 @@ export class MassSpringAnimationSample extends PhysicsAnimation {
     // 1. 力的要因の計算（重力・空気抵抗）
     for (let i = 0; i < numberOfPoints; ++i) {
       // 重力
-      let f = this.gravity.scale(this.mass)
+      let f = this.gravity.scale(this.mass) // F = m・g 重力 ： ベクトル
 
       // 空気抵抗 ＆ 風の影響
       let relativeVel = this.velocities[i]
       if (this.wind) {
-        relativeVel = relativeVel.sub(this.wind)
+        relativeVel = relativeVel.sub(this.wind) // 速度 - 風速 ： ベクトル
       }
+      // F = (質量 * 重力) - (質点の速度 - 風速) * 空気抵抗係数
       f = f.sub(relativeVel.scale(this.dragCoefficient))
       this.forces[i] = f
     }
 
     // 2. バネの力 ＆ 減衰力の計算
     for (let i = 0; i < numberOfEdges; ++i) {
-      const p0 = this.edges[i].first
-      const p1 = this.edges[i].second
+      const p0 = this.edges[i].first // 0, 1, 2,
+      const p1 = this.edges[i].second // 1, 2, 3,
 
-      const pos0 = this.positions[p0]
-      const pos1 = this.positions[p1]
-      const r = pos0.sub(pos1)
-      const distance = r.length()
+      const pos0 = this.positions[p0] // 質点iの座標
+      const pos1 = this.positions[p1] // 質点i+1の座標
+      const r = pos0.sub(pos1) // p0 - p1 ２質点のベクトル差
+      const distance = r.length() // ２質点の距離
+      console.log(distance < 1.0 ? "縮んでる" : "伸びてる")
 
       if (distance > 0.0) {
         // フックの法則 (バネ弾性力)
         const force = r
-          .normalized()
+          .normalized() // 方向
           .scale(-this.stiffness * (distance - this.restLength))
-        this.forces[p0] = this.forces[p0].add(force)
-        this.forces[p1] = this.forces[p1].sub(force)
+        this.forces[p0] = this.forces[p0].add(force) //質点iの力 += force
+        this.forces[p1] = this.forces[p1].sub(force) //質点i+1の力 -= force
       }
 
       // 速度減衰（ダンピング）
