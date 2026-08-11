@@ -1,4 +1,4 @@
-import { Frame } from "../utils/frame.js"
+import { Frame } from "../utils/Frame.js"
 import { PhysicsAnimation } from "../utils/PhysicsAnimation.js"
 
 // -----------------------------------------------------------------
