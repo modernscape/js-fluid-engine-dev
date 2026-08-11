@@ -25,6 +25,6 @@
     "title": "Sample 04: Mass-Spring Chain Animation（p70）",
     "filename": "04-MassSpringAnimation.js",
     "className": "MassSpringAnimationSample",
-    "description": "10個の質点がバネで繋がった鎖のシミュレーションです。<br>重力、風、床との衝突、そして固定された先頭のポイントが高精度なサブステップで計算されます。"
+    "description": "10個の質点がバネで繋がった鎖のシミュレーション<br>重力、風、床との衝突、固定された先頭のポイントが高精度なサブステップで計算される"
   }
 ]
