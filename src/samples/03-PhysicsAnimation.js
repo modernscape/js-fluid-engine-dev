@@ -1,5 +1,5 @@
-import { Frame } from "../utils/Frame.js"
 import { PhysicsAnimation } from "../utils/PhysicsAnimation.js"
+import { Frame } from "../utils/Frame.js"
 
 // -----------------------------------------------------------------
 // 5. メインのサンプルクラス
