@@ -7,7 +7,7 @@ let currentSample = null
 const STORAGE_KEY = "selected_fluid_sample"
 
 // Viteの機能で samples フォルダ内のすべての .js ファイルを事前にマップする
-const sampleModules = import.meta.glob("./samples/*.js")
+const sampleModules = import.meta.glob("./samples/**/*.js")
 
 function initSelector() {
   samplesConfig.forEach((sample) => {

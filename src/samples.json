@@ -26,5 +26,12 @@
     "filename": "04-MassSpringAnimation.js",
     "className": "MassSpringAnimationSample",
     "description": "10個の質点がバネで繋がった鎖のシミュレーション<br>重力、風、床との衝突、固定された先頭のポイントが高精度なサブステップで計算される"
+  },
+  {
+    "id": "05-particle-bounce",
+    "title": "Sample 05: Particle System Bounce Simulation",
+    "filename": "05-particle-bounce/ParticleBounce.js",
+    "className": "ParticleBounceSample",
+    "description": "重力や風を受けるパーティクルが平面（床）と衝突して跳ね返るシミュレーション<br>反発係数や摩擦係数、高精度なサブステップによる挙動が計算される"
   }
 ]
