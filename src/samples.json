@@ -29,7 +29,7 @@
   },
   {
     "id": "05-particle-bounce",
-    "title": "Sample 05: Particle System Bounce Simulation",
+    "title": "Sample 05: Particle System Bounce Simulation（p88）",
     "filename": "05-particle-bounce/ParticleBounce.js",
     "className": "ParticleBounceSample",
     "description": "重力や風を受けるパーティクルが平面（床）と衝突して跳ね返るシミュレーション<br>反発係数や摩擦係数、高精度なサブステップによる挙動が計算される"
