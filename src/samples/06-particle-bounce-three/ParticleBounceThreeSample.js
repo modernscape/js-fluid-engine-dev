@@ -61,11 +61,11 @@ export class ParticleBounceThreeSample {
   }
 
   resetSimulation() {
-    const tiltedNormal = new Vector3D(0, 0.8, 0.0).normalized()
-    const plane = new Plane(tiltedNormal, new Vector3D(0, 0.5, 0))
+    const tiltedNormal = new Vector3D(0.0, 0.8, 0.1).normalized()
+    const plane = new Plane(tiltedNormal, new Vector3D(0, 0.0, 0.0))
     this.collider = new RigidBodyCollider(plane)
-    this.collider.linearVelocity = new Vector3D(0, 0.1, 0.3)
-    this.collider.angularVelocity = new Vector3D(0.02, 0.01, 0.01)
+    this.collider.linearVelocity = new Vector3D(0, 0.0, 0.0)
+    this.collider.angularVelocity = new Vector3D(0.0, 0.0, 0.0)
   }
 
   update(frame) {
