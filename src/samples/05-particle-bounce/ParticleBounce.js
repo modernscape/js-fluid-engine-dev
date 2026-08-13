@@ -103,7 +103,7 @@ export class ParticleBounceSample {
     const centerY = 320
 
     // 軌跡
-    ctx.strokeStyle = "rgba(0, 122, 204, 0.4)"
+    ctx.strokeStyle = "rgba(242, 81, 0, 0.4)"
     ctx.lineWidth = 2
     ctx.beginPath()
     for (let i = 0; i < this.trajectory.length; i++) {
@@ -117,7 +117,7 @@ export class ParticleBounceSample {
     // パーティクル
     if (this.particles.numberOfParticles() > 0) {
       const p = this.particles.positions()[0]
-      ctx.fillStyle = "#4da6ff"
+      ctx.fillStyle = "#fda6ff"
       ctx.beginPath()
       ctx.arc(centerX + p.x * scale, centerY - p.y * scale, 6, 0, Math.PI * 2)
       ctx.fill()
