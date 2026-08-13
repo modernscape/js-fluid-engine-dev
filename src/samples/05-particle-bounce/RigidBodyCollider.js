@@ -5,14 +5,29 @@ export default class RigidBodyCollider {
     this.surface = surface // Plane インスタンス
     this.linearVelocity = new Vector3D(0, 0, 0)
     this.angularVelocity = new Vector3D(0, 0, 0)
-    this.frictionCoefficient = 0.0
+    this.frictionCoefficient = 0.1
+    this.restitutionCoefficient = 0.7
   }
 
   velocityAt(point) {
+    // linearVelocity が定義されていない場合は静止（0, 0, 0）として扱う
+    const lv = this.linearVelocity || { x: 0, y: 0, z: 0 }
+    const av = this.angularVelocity || { x: 0, y: 0, z: 0 }
+    const pos = this.position || { x: 0, y: 0, z: 0 }
+
+    // 回転を考慮する場合の計算
+    const rx = point.x - pos.x
+    const ry = point.y - pos.y
+    const rz = point.z - pos.z
+
+    const rotationalVelocityX = av.y * rz - av.z * ry
+    const rotationalVelocityY = av.z * rx - av.x * rz
+    const rotationalVelocityZ = av.x * ry - av.y * rx
+
     return new Vector3D(
-      this.linearVelocity.x,
-      this.linearVelocity.y,
-      this.linearVelocity.z,
+      lv.x + rotationalVelocityX,
+      lv.y + rotationalVelocityY,
+      lv.z + rotationalVelocityZ,
     )
   }
 
