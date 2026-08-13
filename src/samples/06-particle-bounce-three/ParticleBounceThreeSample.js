@@ -8,7 +8,25 @@ import RigidBodyCollider from "../05-particle-bounce/RigidBodyCollider.js"
 
 export class ParticleBounceThreeSample {
   constructor(canvas) {
-    this.canvas = canvas
+    // this.canvas = canvas
+
+    const parent = canvas.parentNode
+    const newCanvas = document.createElement("canvas")
+
+    newCanvas.width = canvas.width || 800
+    newCanvas.height = canvas.height || 600
+    newCanvas.id = canvas.id
+    newCanvas.className = canvas.className
+
+    newCanvas.style.cssText = canvas.style.cssText
+
+    if (parent) {
+      parent.replaceChild(newCanvas, canvas)
+    }
+
+    this.canvas = newCanvas
+    this.originalCanvas = canvas // stopで戻す用（任意）
+
     this.frame = new Frame(0, 1.0 / 60.0)
     this.particles = new ParticleSystemData()
     this.maxParticles = 600
@@ -23,7 +41,12 @@ export class ParticleBounceThreeSample {
     )
     this.camera.position.set(0, 2, 5)
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+    // まっさらな状態でWebGLRendererを生成
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas,
+      antialias: true,
+    })
+    this.renderer.setSize(this.canvas.width, this.canvas.height)
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
 
     // 粒子用のポイントクラウド
@@ -191,6 +214,12 @@ export class ParticleBounceThreeSample {
   }
 
   start() {
+    // 起動時に既存のループがあれば止める
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId)
+      this.animationFrameId = null
+    }
+
     const loop = () => {
       this.update(this.frame)
       this.controls.update()
@@ -199,5 +228,20 @@ export class ParticleBounceThreeSample {
       requestAnimationFrame(loop)
     }
     requestAnimationFrame(loop)
+  }
+
+  // ★ このメソッドを追加・修正
+  stop() {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId)
+      this.animationFrameId = null
+    }
+    // WebGLレンダラーの破棄とCanvasの復元
+    if (this.renderer) {
+      this.renderer.dispose()
+    }
+    if (this.canvas.parentNode && this.originalCanvas) {
+      this.canvas.parentNode.replaceChild(this.originalCanvas, this.canvas)
+    }
   }
 }
