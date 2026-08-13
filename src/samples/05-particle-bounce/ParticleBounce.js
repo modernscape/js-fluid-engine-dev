@@ -51,7 +51,7 @@ export class ParticleBounceSample {
 
     // --- 【ここを設定】最初から動く・回転する床にする場合 ---
     this.collider.linearVelocity = new Vector3D(0, 0.1, 0.3)
-    this.collider.angularVelocity = new Vector3D(0.02, 0.01, 0.01)
+    this.collider.angularVelocity = new Vector3D(0.0, 0.0, 0.01)
     // --------------------------------------------------------
 
     this.particles = new ParticleSystemData()
