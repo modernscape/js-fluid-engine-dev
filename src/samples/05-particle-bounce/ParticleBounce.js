@@ -42,10 +42,17 @@ export class ParticleBounceSample {
   resetSimulation() {
     this.frame = new Frame(0, 1.0 / 60.0)
 
-    // 床を y = 0 に設定
-    const plane = new Plane(new Vector3D(0, 1, 0), new Vector3D(0, 0, 0))
+    const tiltedNormal = new Vector3D(0, 0.8, 0.0).normalized()
+    const plane = new Plane(tiltedNormal, new Vector3D(0, 0.5, 0))
+
     this.collider = new RigidBodyCollider(plane)
-    this.collider.frictionCoefficient = this.frictionCoefficient
+    this.collider.frictionCoefficient = 0.2
+    this.collider.restitutionCoefficient = 0.8
+
+    // --- 【ここを設定】最初から動く・回転する床にする場合 ---
+    this.collider.linearVelocity = new Vector3D(0, 0.1, 0.3)
+    this.collider.angularVelocity = new Vector3D(0.02, 0.01, 0.01)
+    // --------------------------------------------------------
 
     this.particles = new ParticleSystemData()
   }
@@ -76,6 +83,42 @@ export class ParticleBounceSample {
     const subSteps = 5
     const dt = frame.timeIntervalInSeconds / subSteps
 
+    if (this.collider && this.collider.surface) {
+      const plane = this.collider.surface
+      const lv = this.collider.linearVelocity
+      const av = this.collider.angularVelocity
+
+      // 1ステップあたりの移動量を足し込む（subStepsで割るか、全体のdtを使う）
+      // ※ dt は subStep ごとの時間なので、1フレーム分進めるなら frame.timeIntervalInSeconds を使います
+      const frameDt = frame.timeIntervalInSeconds
+
+      // 位置の更新 (p = p + v * dt)
+      plane.point.x += lv.x * frameDt
+      plane.point.y += lv.y * frameDt
+      plane.point.z += lv.z * frameDt
+
+      // ※もし angularVelocity による回転も反映させたい場合はここに回転処理を入れます
+      if (av.x !== 0 || av.y !== 0 || av.z !== 0) {
+        const nx = plane.normal.x
+        const ny = plane.normal.y
+        const nz = plane.normal.z
+
+        // 外積: rotationDelta = av × normal
+        const dnx = (av.y * nz - av.z * ny) * frameDt
+        const dny = (av.z * nx - av.x * nz) * frameDt
+        const dnz = (av.x * ny - av.y * nx) * frameDt
+
+        plane.normal.x += dnx
+        plane.normal.y += dny
+        plane.normal.z += dnz
+
+        // 向きが変わるので必ず正規化して長さ 1.0 に保つ
+        plane.normal = plane.normal.normalized
+          ? plane.normal.normalized()
+          : plane.normal
+      }
+    }
+
     for (let step = 0; step < subSteps; ++step) {
       this.particles.clearForces()
       const positions = this.particles.positions()
@@ -95,14 +138,17 @@ export class ParticleBounceSample {
         velocities[i] = velocities[i].add(forces[i].scale(dt))
         positions[i] = positions[i].add(velocities[i].scale(dt))
 
-        // 床（プレーン）との衝突・跳ね返り解決
-        this.collider.resolveCollision(
-          positions[i],
-          velocities[i],
-          0.04, // 粒子の半径
-          this.restitutionCoefficient,
-          this.collider.frictionCoefficient,
-        )
+        // --- 修正：positions[i] と velocities[i] をオブジェクトとしてまとめて渡す ---
+        const particleProxy = {
+          position: positions[i],
+          velocity: velocities[i],
+        }
+
+        if (this.collider.resolveCollision(particleProxy)) {
+          // 衝突によって変更された位置・速度を元の配列に戻す（必要に応じて）
+          positions[i] = particleProxy.position
+          velocities[i] = particleProxy.velocity
+        }
       }
     }
   }
@@ -119,42 +165,43 @@ export class ParticleBounceSample {
     const centerX = width * 0.5
     const centerY = height * 0.8 // 床を画面下寄りに配置
 
-    // 床の描画
-    ctx.strokeStyle = "#444444"
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.moveTo(width * 0, centerY)
-    ctx.lineTo(width * 1, centerY)
-    ctx.stroke()
+    // --- 動く床（Plane）の描画 ---
+    if (this.collider && this.collider.surface) {
+      const plane = this.collider.surface
+      const normal = plane.normal
+      const point = plane.point // 現在の床の基準点（移動を反映）
 
-    // --- 床（Plane）のグリッド可視化 ---
+      // 画面の左右端に対応する3D上のワールド座標を計算してラインを描画する
+      // 画面の左端 (x = 0) と右端 (x = width) に対応するワールドX座標を逆算
+      const worldX1 = (0 - centerX) / scale
+      const worldX2 = (width - centerX) / scale
+
+      // 平面の方程式 (normal.x * (x - point.x) + normal.y * (y - point.y) + normal.z * (z - point.z) = 0) から Yを求める
+      // ※ ここでは Z = 0 の断面として計算します
+      const getY = (wx) => {
+        if (Math.abs(normal.y) < 0.0001) return point.y // 法線がほぼ垂直な場合の保険
+        return point.y - (normal.x * (wx - point.x) + normal.z * 0) / normal.y
+      }
+
+      const worldY1 = getY(worldX1)
+      const worldY2 = getY(worldX2)
+
+      // 3D座標を2D画面上のピクセル座標に変換
+      const sx1 = 0
+      const sy1 = centerY - worldY1 * scale
+      const sx2 = width
+      const sy2 = centerY - worldY2 * scale
+
+      ctx.strokeStyle = "#66aaff" // 動く床であることがわかりやすいように少し色を変える（お好みで調整）
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(sx1, sy1)
+      ctx.lineTo(sx2, sy2)
+      ctx.stroke()
+    }
+
     ctx.strokeStyle = "#333333"
     ctx.lineWidth = 1
-
-    // 1. 縦のライン（Canvas上端から床に向かって広がる奥行き線）
-    // for (let x = -5; x <= 5; x += 1) {
-    //   ctx.beginPath()
-    //   // 上端側の座標（Canvasのトップ y = 0）
-    //   const topX = centerX + x * scale * 0.4
-    //   const topY = 0
-
-    //   // 床側の座標（y = centerY）
-    //   const bottomX = centerX + x * scale * 2.0
-    //   const bottomY = centerY + 100
-
-    //   ctx.moveTo(topX, topY)
-    //   ctx.lineTo(bottomX, bottomY)
-    //   ctx.stroke()
-    // }
-
-    // 床の水平ライン（基準となる線）
-    // ctx.strokeStyle = "#555555"
-    // ctx.lineWidth = 1.5
-    // ctx.beginPath()
-    // ctx.moveTo(width * 0.1, centerY)
-    // ctx.lineTo(width * 0.9, centerY)
-    // ctx.stroke()
-    // ------------------------------------
 
     // すべての粒子の描画
     const positions = this.particles.positions()

@@ -9,17 +9,18 @@ export default class RigidBodyCollider {
     this.restitutionCoefficient = 0.7
   }
 
+  // 接触位置における床の速度（並進速度 ＋ 回転による速度）を返す
   velocityAt(point) {
-    // linearVelocity が定義されていない場合は静止（0, 0, 0）として扱う
-    const lv = this.linearVelocity || { x: 0, y: 0, z: 0 }
-    const av = this.angularVelocity || { x: 0, y: 0, z: 0 }
-    const pos = this.position || { x: 0, y: 0, z: 0 }
+    const lv = this.linearVelocity || new Vector3D(0, 0, 0)
+    const av = this.angularVelocity || new Vector3D(0, 0, 0)
+    const pos = this.surface.point // 床の基準点
 
-    // 回転を考慮する場合の計算
+    // 回転の中心から接触位置までのベクトル (r)
     const rx = point.x - pos.x
     const ry = point.y - pos.y
     const rz = point.z - pos.z
 
+    // 外積による回転速度の計算 (v = w × r)
     const rotationalVelocityX = av.y * rz - av.z * ry
     const rotationalVelocityY = av.z * rx - av.x * rz
     const rotationalVelocityZ = av.x * ry - av.y * rx
@@ -31,85 +32,78 @@ export default class RigidBodyCollider {
     )
   }
 
-  resolveCollision(
-    newPosition,
-    newVelocity,
-    radius,
-    restitutionCoefficient,
-    frictionCoefficient,
-  ) {
-    const closestPoint = this.surface.closestPoint(newPosition)
+  // 衝突判定と解決（相対速度をベースに計算）
+  resolveCollision(particle) {
+    if (!this.surface.isInside(particle.position)) {
+      return false
+    }
+
+    // 1. 粒子が突入した位置（衝突点）を取得
+    const contactPoint = this.surface.closestPoint(particle.position)
     const normal = this.surface.normal
 
-    // 平面からの符号付き距離（r = newPosition - closestPoint の法線方向成分）
-    const rx = newPosition.x - closestPoint.x
-    const ry = newPosition.y - closestPoint.y
-    const rz = newPosition.z - closestPoint.z
-    const distance = rx * normal.x + ry * normal.y + rz * normal.z
+    // 2. その瞬間における床の表面速度を取得
+    const surfaceVel = this.velocityAt(contactPoint)
 
-    if (distance <= radius) {
-      // 1. 位置の補正（表面上に押し戻す）
-      const targetX = closestPoint.x + normal.x * radius
-      const targetY = closestPoint.y + normal.y * radius
-      const targetZ = closestPoint.z + normal.z * radius
-      newPosition.x = targetX
-      newPosition.y = targetY
-      newPosition.z = targetZ
+    // 3. 粒子の速度から床の速度を引いた「相対速度」を計算
+    const relVelX = particle.velocity.x - surfaceVel.x
+    const relVelY = particle.velocity.y - surfaceVel.y
+    const relVelZ = particle.velocity.z - surfaceVel.z
 
-      // 2. 速度の相対速度計算
-      const colliderVel = this.velocityAt(closestPoint)
-      const relVelX = newVelocity.x - colliderVel.x
-      const relVelY = newVelocity.y - colliderVel.y
-      const relVelZ = newVelocity.z - colliderVel.z
+    // 4. 相対速度を法線方向と接線方向に分解
+    const normalDotRelVel =
+      relVelX * normal.x + relVelY * normal.y + relVelZ * normal.z
 
-      const normalDotRelVel =
-        relVelX * normal.x + relVelY * normal.y + relVelZ * normal.z
-
-      if (normalDotRelVel < 0.0) {
-        // 法線方向の反発
-        const normalVelX = normal.x * normalDotRelVel
-        const normalVelY = normal.y * normalDotRelVel
-        const normalVelZ = normal.z * normalDotRelVel
-
-        let tangentVelX = relVelX - normalVelX
-        let tangentVelY = relVelY - normalVelY
-        let tangentVelZ = relVelZ - normalVelZ
-
-        // 法線方向の速度を反発係数倍して反転
-        const reflectedNormalVelX = normalVelX * -restitutionCoefficient
-        const reflectedNormalVelY = normalVelY * -restitutionCoefficient
-        const reflectedNormalVelZ = normalVelZ * -restitutionCoefficient
-
-        // 接線方向の摩擦
-        if (frictionCoefficient > 0.0) {
-          const tangentSpeed = Math.sqrt(
-            tangentVelX * tangentVelX +
-              tangentVelY * tangentVelY +
-              tangentVelZ * tangentVelZ,
-          )
-          if (tangentSpeed > 0.0) {
-            const frictionImpulse = Math.max(
-              1.0 -
-                (frictionCoefficient *
-                  (1.0 + restitutionCoefficient) *
-                  -normalDotRelVel) /
-                  tangentSpeed,
-              0.0,
-            )
-            tangentVelX *= frictionImpulse
-            tangentVelY *= frictionImpulse
-            tangentVelZ *= frictionImpulse
-          }
-        }
-
-        const finalVelX = reflectedNormalVelX + tangentVelX + colliderVel.x
-        const finalVelY = reflectedNormalVelY + tangentVelY + colliderVel.y
-        const finalVelZ = reflectedNormalVelZ + tangentVelZ + colliderVel.z
-
-        newVelocity.x = finalVelX
-        newVelocity.y = finalVelY
-        newVelocity.z = finalVelZ
-      }
+    // すでに床から離れる向きに動いている場合は処理しない
+    if (normalDotRelVel > 0) {
+      return false
     }
+
+    const normalVelX = normalDotRelVel * normal.x
+    const normalVelY = normalDotRelVel * normal.y
+    const normalVelZ = normalDotRelVel * normal.z
+
+    let tangentVelX = relVelX - normalVelX
+    let tangentVelY = relVelY - normalVelY
+    let tangentVelZ = relVelZ - normalVelZ
+
+    const tangentSpeed = Math.sqrt(
+      tangentVelX * tangentVelX +
+        tangentVelY * tangentVelY +
+        tangentVelZ * tangentVelZ,
+    )
+
+    // 5. 摩擦（タンジェント方向の減衰）の適用
+    if (tangentSpeed > 0.0001) {
+      const frictionImpulse = Math.max(
+        1.0 -
+          (this.frictionCoefficient *
+            (1.0 + this.restitutionCoefficient) *
+            -normalDotRelVel) /
+            tangentSpeed,
+        0.0,
+      )
+      tangentVelX *= frictionImpulse
+      tangentVelY *= frictionImpulse
+      tangentVelZ *= frictionImpulse
+    }
+
+    // 6. 法線方向の跳ね返り（反発係数）の適用
+    const newNormalVelX = -this.restitutionCoefficient * normalVelX
+    const newNormalVelY = -this.restitutionCoefficient * normalVelY
+    const newNormalVelZ = -this.restitutionCoefficient * normalVelZ
+
+    // 7. 新しい相対速度に床の速度を足し戻して、粒子の絶対速度を確定させる
+    particle.velocity.x = tangentVelX + newNormalVelX + surfaceVel.x
+    particle.velocity.y = tangentVelY + newNormalVelY + surfaceVel.y
+    particle.velocity.z = tangentVelZ + newNormalVelZ + surfaceVel.z
+
+    // 8. 埋まり込みの解消（位置の補正）
+    const correction = this.surface.closestDistance(particle.position)
+    particle.position.x -= correction * normal.x
+    particle.position.y -= correction * normal.y
+    particle.position.z -= correction * normal.z
+
+    return true
   }
 }
