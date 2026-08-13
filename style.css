@@ -1,5 +1,5 @@
 body {
-  background: #959595;
+  background: #eeeeee;
   color: #f8fafc;
   font-family: sans-serif;
   display: flex;
@@ -21,7 +21,7 @@ select {
   padding: 8px 12px;
   background: #334155;
   color: white;
-  border: none;
+  border: none;r
   border-radius: 4px;
   font-size: 1rem;
 }
