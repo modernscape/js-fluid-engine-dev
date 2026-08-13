@@ -36,7 +36,7 @@
   },
   {
     "id": "06-particle-bounce-three",
-    "title": "Sample 05: Particle System Bounce Simulation（p88）",
+    "title": "Sample 06: Particle System Bounce Simulation 3D（p88）",
     "filename": "06-particle-bounce-three/ParticleBounceThreeSample.js",
     "className": "ParticleBounceThreeSample",
     "description": "05のthree.js版"
