@@ -1,10 +1,10 @@
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import { Vector3D } from "../../utils/Vector3D.js"
-import { Frame } from "../../utils/Frame.js"
-import ParticleSystemData from "../05-particle-bounce/ParticleSystemData.js"
-import Plane from "../05-particle-bounce/Plane.js"
-import RigidBodyCollider from "../05-particle-bounce/RigidBodyCollider.js"
+import { Vector3D } from "../utils/Vector3D.js"
+import { Frame } from "../utils/Frame.js"
+import ParticleSystemData from "./05-particle-bounce/ParticleSystemData.js"
+import Plane from "./05-particle-bounce/Plane.js"
+import RigidBodyCollider from "./05-particle-bounce/RigidBodyCollider.js"
 
 export class ParticleBounceThreeSample {
   constructor(canvas) {

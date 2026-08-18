@@ -37,8 +37,15 @@
   {
     "id": "06-particle-bounce-three",
     "title": "Sample 06: Particle System Bounce Simulation 3D（p88）",
-    "filename": "06-particle-bounce-three/ParticleBounceThreeSample.js",
+    "filename": "06-ParticleBounceThreeSample.js",
     "className": "ParticleBounceThreeSample",
     "description": "05のthree.js版"
+  },
+  {
+    "id": "08-flip-dam-breaking",
+    "title": "Sample 08: Dam-breaking simulation with FLIP solver",
+    "filename": "FlipDamBreakingSample.js",
+    "className": "FlipDamBreakingSample",
+    "description": "FLIPソルバーを用いたダム崩壊および障害物衝突シミュレーションの3D版"
   }
 ]
