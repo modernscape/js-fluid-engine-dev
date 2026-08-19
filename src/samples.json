@@ -42,10 +42,10 @@
     "description": "05のthree.js版"
   },
   {
-    "id": "08-flip-dam-breaking",
-    "title": "Sample 08: Dam-breaking simulation with FLIP solver",
-    "filename": "FlipDamBreakingSample.js",
+    "id": "08",
+    "title": "Sample 08: FLIP",
+    "filename": "08-FlipDamBreakingSample/index.js",
     "className": "FlipDamBreakingSample",
-    "description": "FLIPソルバーを用いたダム崩壊および障害物衝突シミュレーションの3D版"
+    "description": "08"
   }
 ]

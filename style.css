@@ -14,6 +14,12 @@ canvas {
   border-radius: 8px;
   box-shadow: 0 5px 5px rgba(0, 0, 0, 0.2);
 }
+#simulationCanvas {
+  width: 800px !important;
+  height: 400px !important;
+  max-width: 100%;
+  display: block;
+}
 .controls {
   margin-bottom: 20px;
 }
