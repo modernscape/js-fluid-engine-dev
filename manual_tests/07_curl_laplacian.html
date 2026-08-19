@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Laplacian and Curl Visualizer</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #111;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .controls {
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 5px;
+        }
+        button:hover {
+            background: #005999;
+        }
+        canvas {
+            border: 1px solid #555;
+            background: #000;
+        }
+        .info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <button onclick="switchMode('laplacian')">1. ラプラシアン (Laplacian) - 色で表示</button>
+        <button onclick="switchMode('curl')">2. 回転 (Curl) - 矢印で表示</button>
+    </div>
+    
+    <canvas id="simCanvas" width="500" height="500"></canvas>
+    <div class="info" id="modeDescription">スカラー場の凹凸の激しさ（ラプラシアン）を表示中</div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const scale = 10 / Math.min(width, height);
+
+        let currentMode = 'laplacian';
+
+        // --- 1. ラプラシアン (Laplacian) の計算 ---
+        // スカラー場 f(x, y) = sin(x) * sin(y) のラプラシアン
+        // 計算結果は -2 * sin(x) * sin(y) になります。
+        function scalarLaplacian(x, y) {
+            return -2 * Math.sin(x) * Math.sin(y);
+        }
+
+        // --- 2. 回転 (Curl) の計算 ---
+        // 最初のC++コードにあった VectorField3 の Curl の式をベースにした2D風の渦
+        function vectorCurl(x, y) {
+            return {
+                x: -Math.sin(y),
+                y: -Math.cos(x)
+            };
+        }
+
+        // --- 描画処理 ---
+        function render() {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, width, height);
+
+            if (currentMode === 'laplacian') {
+                drawLaplacian();
+                document.getElementById('modeDescription').innerText = "ラプラシアン (スカラー → スカラー): 周囲の平均と比べた「凹凸の激しさ」を色で表現";
+            } else {
+                drawCurl();
+                document.getElementById('modeDescription').innerText = "回転 / Curl (ベクトル → ベクトル): 矢印がどれくらい渦巻いているかを表現";
+            }
+        }
+
+        // ラプラシアン（スカラー場）をピクセルカラーで描画
+        function drawLaplacian() {
+            const imgData = ctx.createImageData(width, height);
+            for (let py = 0; py < height; py++) {
+                for (let px = 0; px < width; px++) {
+                    const x = (px - centerX) * scale;
+                    const y = (py - centerY) * scale;
+
+                    const val = scalarLaplacian(x, y); // 値はだいたい -2 〜 +2
+                    const intensity = Math.min(Math.abs(val) * 100, 255);
+                    const index = (py * width + px) * 4;
+
+                    if (val > 0) {
+                        imgData.data[index] = intensity;     // 赤 (出っ張り)
+                        imgData.data[index + 3] = 255;
+                    } else {
+                        imgData.data[index + 2] = intensity; // 青 (凹み)
+                        imgData.data[index + 3] = 255;
+                    }
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // 回転 (Curl) を矢印で描画
+        function drawCurl() {
+            const gridSpacing = 25;
+            const cols = Math.floor(width / gridSpacing);
+            const rows = Math.floor(height / gridSpacing);
+
+            for (let j = 0; j <= rows; j++) {
+                for (let i = 0; i <= cols; i++) {
+                    const px = i * gridSpacing;
+                    const py = j * gridSpacing;
+
+                    const x = (px - centerX) * scale;
+                    const y = (py - centerY) * scale;
+
+                    const c = vectorCurl(x, y);
+
+                    const arrowScale = 15;
+                    const endX = px + c.x * arrowScale;
+                    const endY = py + c.y * arrowScale;
+
+                    drawArrow(px, py, endX, endY, "#ff00ff");
+                }
+            }
+        }
+
+        function drawArrow(fromX, fromY, toX, toY, color) {
+            const headlen = 4;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            render();
+        }
+
+        // 初期描画
+        render();
+    </script>
+</body>
+</html>

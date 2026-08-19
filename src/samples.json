@@ -40,12 +40,5 @@
     "filename": "06-ParticleBounceThreeSample.js",
     "className": "ParticleBounceThreeSample",
     "description": "05のthree.js版"
-  },
-  {
-    "id": "08",
-    "title": "Sample 08: FLIP",
-    "filename": "08-FlipDamBreakingSample/index.js",
-    "className": "FlipDamBreakingSample",
-    "description": "08"
   }
 ]
