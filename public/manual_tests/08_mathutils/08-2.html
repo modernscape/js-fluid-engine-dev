@@ -31,11 +31,7 @@
     <div class="info">マウスを左右に動かすと、補間位置（t）が変化します</div>
 
     <script type="module">
-      import {
-        lerp,
-        catmullRom,
-        monotonicCatmullRom,
-      } from "/public/manual_tests/08_mathutils/mathutils.js"
+      import { lerp, catmullRom, monotonicCatmullRom } from "./mathutils.js"
 
       const canvas = document.getElementById("simCanvas")
       const ctx = canvas.getContext("2d")
