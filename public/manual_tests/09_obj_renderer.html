@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CPU 3D Renderer (Auto-Fit)</title>
+    <style>
+      body {
+        margin: 0;
+        background: #1a1a1a;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        font-family: sans-serif;
+      }
+      canvas {
+        border: 1px solid #444;
+        background: #000;
+      }
+      .controls {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <div class="controls">
+      <input type="file" id="fileInput" accept=".obj" />
+      <span id="info">bunny.obj を選択してください。</span>
+    </div>
+
+    <script>
+      class TriangleMesh3 {
+        constructor(vertices, indices) {
+          this.vertices = new Float32Array(vertices)
+          this.indices = new Uint32Array(indices)
+        }
+      }
+
+      const canvas = document.getElementById("canvas")
+      const ctx = canvas.getContext("2d")
+      let mesh = null
+      let angleY = 0
+
+      // モデルの中心とサイズ
+      let centerX = 0,
+        centerY = 0,
+        centerZ = 0
+      let maxDim = 1
+
+      function parseOBJ(text) {
+        const vertices = []
+        const indices = []
+        const lines = text.split("\n")
+
+        let minX = Infinity,
+          minY = Infinity,
+          minZ = Infinity
+        let maxX = -Infinity,
+          maxY = -Infinity,
+          maxZ = -Infinity
+
+        for (let line of lines) {
+          const parts = line.trim().split(/\s+/)
+          if (parts[0] === "v") {
+            const x = parseFloat(parts[1])
+            const y = parseFloat(parts[2])
+            const z = parseFloat(parts[3])
+            vertices.push(x, y, z)
+
+            if (x < minX) minX = x
+            if (x > maxX) maxX = x
+            if (y < minY) minY = y
+            if (y > maxY) maxY = y
+            if (z < minZ) minZ = z
+            if (z > maxZ) maxZ = z
+          } else if (parts[0] === "f") {
+            for (let i = 1; i <= 3; i++) {
+              if (parts[i]) {
+                indices.push(parseInt(parts[i].split("/")[0]) - 1)
+              }
+            }
+          }
+        }
+
+        // モデルの中心を計算
+        centerX = (minX + maxX) / 2
+        centerY = (minY + maxY) / 2
+        centerZ = (minZ + maxZ) / 2
+
+        // 最大の大きさを計算してスケールの基準にする
+        const sizeX = maxX - minX
+        const sizeY = maxY - minY
+        const sizeZ = maxZ - minZ
+        maxDim = Math.max(sizeX, sizeY, sizeZ)
+
+        document.getElementById("info").innerText =
+          `Vertices: ${vertices.length / 3}, Faces: ${indices.length / 3}`
+        return new TriangleMesh3(vertices, indices)
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        if (!mesh) {
+          requestAnimationFrame(render)
+          return
+        }
+
+        const screenCx = canvas.width / 2
+        const screenCy = canvas.height / 2
+        // 自動スケーリング（画面に収まるように調整）
+        const scale = (canvas.height * 0.8) / maxDim
+
+        angleY += 0.01
+        const cos = Math.cos(angleY)
+        const sin = Math.sin(angleY)
+
+        ctx.strokeStyle = "#00ffcc"
+        ctx.lineWidth = 0.5
+        ctx.beginPath()
+
+        const v = mesh.vertices
+        const ind = mesh.indices
+
+        for (let i = 0; i < ind.length; i += 3) {
+          const i0 = ind[i] * 3
+          const i1 = ind[i + 1] * 3
+          const i2 = ind[i + 2] * 3
+
+          const points = []
+          for (let j = 0; j < 3; j++) {
+            const idx = ind[i + j] * 3
+            // 1. 中心を原点に移動
+            let x = v[idx] - centerX
+            let y = v[idx + 1] - centerY
+            let z = v[idx + 2] - centerZ
+
+            // 2. Y軸回転
+            let nx = x * cos - z * sin
+            let nz = x * sin + z * cos
+
+            // 3. カメラの手前（+Z方向）にオフセット
+            nz += maxDim * 2.0
+
+            // 4. 透視投影
+            const fov = (maxDim * 1.5) / nz
+            points.push([
+              screenCx + nx * scale * fov,
+              screenCy - y * scale * fov, // Y反転
+            ])
+          }
+
+          ctx.moveTo(points[0][0], points[0][1])
+          ctx.lineTo(points[1][0], points[1][1])
+          ctx.lineTo(points[2][0], points[2][1])
+          ctx.closePath()
+        }
+        ctx.stroke()
+        requestAnimationFrame(render)
+      }
+
+      document.getElementById("fileInput").addEventListener("change", (e) => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          mesh = parseOBJ(event.target.result)
+        }
+        reader.readAsText(e.target.files[0])
+      })
+
+      render()
+    </script>
+  </body>
+</html>
