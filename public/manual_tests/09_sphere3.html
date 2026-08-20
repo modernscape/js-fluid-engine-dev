@@ -83,8 +83,8 @@
             this.radius = radius
           }
 
-          closestIntersection(rayOrigin, rayDir) {
-            let intersection = { isIntersecting: false }
+          getIntersections(rayOrigin, rayDir) {
+            let intersections = []
             let r = rayOrigin.sub(this.center)
             let b = rayDir.dot(r)
             let c = r.lengthSquared() - this.radius * this.radius
@@ -92,26 +92,37 @@
 
             if (d > 0) {
               d = Math.sqrt(d)
-              let tMin = -b - d
-              let tMax = -b + d
+              let t1 = -b - d
+              let t2 = -b + d
 
-              if (tMin < 0.0) tMin = tMax
-
-              if (tMin < 0.0) {
-                intersection.isIntersecting = false
-              } else {
-                intersection.isIntersecting = true
-                intersection.distance = tMin
-                intersection.point = rayOrigin.add(rayDir.scale(tMin))
-                intersection.normal = intersection.point
-                  .sub(this.center)
-                  .normalize()
+              if (t1 > t2) {
+                let tmp = t1
+                t1 = t2
+                t2 = tmp
               }
-            } else {
-              intersection.isIntersecting = false
-            }
 
-            return intersection
+              if (t1 >= 0) {
+                intersections.push({
+                  distance: t1,
+                  point: rayOrigin.add(rayDir.scale(t1)),
+                  normal: rayOrigin
+                    .add(rayDir.scale(t1))
+                    .sub(this.center)
+                    .normalize(),
+                })
+              }
+              if (t2 >= 0) {
+                intersections.push({
+                  distance: t2,
+                  point: rayOrigin.add(rayDir.scale(t2)),
+                  normal: rayOrigin
+                    .add(rayDir.scale(t2))
+                    .sub(this.center)
+                    .normalize(),
+                })
+              }
+            }
+            return intersections
           }
         }
 
@@ -146,7 +157,6 @@
         let lastTouchX = 0
         let lastTouchY = 0
 
-        // タッチイベント
         canvas.addEventListener(
           "touchstart",
           (e) => {
@@ -195,13 +205,11 @@
           { passive: false },
         )
 
-        // マウスイベント（ドラッグ＆右ボタンドラッグ対応）
         let isMouseDown = false
-        let mouseButton = 0 // 0: 左, 2: 右
+        let mouseButton = 0
         let lastMouseX = 0
         let lastMouseY = 0
 
-        // 右クリックメニューの抑制
         canvas.addEventListener("contextmenu", (e) => {
           e.preventDefault()
         })
@@ -222,11 +230,9 @@
           const dy = (clientY - lastMouseY) / rect.height
 
           if (mouseButton === 0) {
-            // 左ボタンドラッグ：レイの始点移動
             rayOrigin.x += dx * 3.0
             rayOrigin.y -= dy * 3.0
           } else if (mouseButton === 2) {
-            // 右ボタンドラッグ：全体平行移動
             const moveX = dx * 3.0
             const moveY = -dy * 3.0
             rayOrigin.x += moveX
@@ -247,15 +253,15 @@
           ctx.clearRect(0, 0, width, height)
 
           const rayDir = rayTarget.sub(rayOrigin).normalize()
-          const intersection = sphere.closestIntersection(rayOrigin, rayDir)
+          const intersections = sphere.getIntersections(rayOrigin, rayDir)
 
           const rayStartScr = project(rayOrigin)
           const rayFarPoint = rayOrigin.add(rayDir.scale(4.0))
           const rayEndScr = project(rayFarPoint)
 
-          // 1. レイの背面
-          if (intersection.isIntersecting) {
-            const ptScr = project(intersection.point)
+          if (intersections.length > 0) {
+            const lastInter = intersections[intersections.length - 1]
+            const ptScr = project(lastInter.point)
             ctx.strokeStyle = "#1d3557"
             ctx.lineWidth = 2
             ctx.beginPath()
@@ -264,17 +270,14 @@
             ctx.stroke()
           }
 
-          // 2. 球体と完全なワイヤーフレーム（緯線・複数の経線）の描画
           const sphereScr = project(sphere.center)
           const radiusScr = sphere.radius * 160
 
-          // 本体（半透明塗りつぶし）
           ctx.fillStyle = "rgba(180, 130, 255, 0.38)"
           ctx.beginPath()
           ctx.arc(sphereScr.x, sphereScr.y, radiusScr, 0, Math.PI * 2)
           ctx.fill()
 
-          // 外周の輪郭線
           ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"
           ctx.lineWidth = 1.5
           ctx.beginPath()
@@ -285,7 +288,6 @@
           ctx.strokeStyle = "rgba(255, 255, 255, 0.15)"
           ctx.lineWidth = 1
 
-          // 緯線（横方向のリング）
           const latSteps = 4
           for (let i = -latSteps + 1; i < latSteps; i++) {
             if (i === 0) continue
@@ -304,7 +306,6 @@
             ctx.stroke()
           }
 
-          // 複数の経線
           const lonSteps = 4
           for (let j = 0; j < lonSteps; j++) {
             const angleY = (Math.PI / lonSteps) * j
@@ -324,18 +325,30 @@
             ctx.stroke()
           }
 
-          // 3. レイの前面
+          if (intersections.length === 2) {
+            const p1Scr = project(intersections[0].point)
+            const p2Scr = project(intersections[1].point)
+            ctx.strokeStyle = "#3a86ff"
+            ctx.lineWidth = 1.5
+            ctx.setLineDash([3, 3])
+            ctx.beginPath()
+            ctx.moveTo(p1Scr.x, p1Scr.y)
+            ctx.lineTo(p2Scr.x, p2Scr.y)
+            ctx.stroke()
+            ctx.setLineDash([])
+          }
+
           ctx.strokeStyle = "#3a86ff"
           ctx.lineWidth = 2
           ctx.beginPath()
           ctx.moveTo(rayStartScr.x, rayStartScr.y)
-          if (intersection.isIntersecting) {
-            const ptScr = project(intersection.point)
+          if (intersections.length > 0) {
+            const ptScr = project(intersections[0].point)
             ctx.lineTo(ptScr.x, ptScr.y)
             ctx.stroke()
 
             const nearPoint = project(
-              intersection.point.sub(rayDir.scale(0.15)),
+              intersections[0].point.sub(rayDir.scale(0.15)),
             )
             drawArrowHead(nearPoint.x, nearPoint.y, ptScr.x, ptScr.y, "#3a86ff")
           } else {
@@ -351,17 +364,27 @@
             )
           }
 
-          // 4. 交点と法線
-          if (intersection.isIntersecting) {
-            const ptScr = project(intersection.point)
+          if (intersections.length > 0) {
+            // すべての交点に点を描画
+            intersections.forEach((inter, index) => {
+              const ptScr = project(inter.point)
 
-            ctx.fillStyle = "#ff006e"
-            ctx.beginPath()
-            ctx.arc(ptScr.x, ptScr.y, 6, 0, Math.PI * 2)
-            ctx.fill()
+              // 交点が2つあり、それが2つ目の点（インデックス1）なら薄くする
+              if (intersections.length === 2 && index === 1) {
+                ctx.fillStyle = "rgba(255, 0, 110, 0.3)" // 薄い赤 (α=0.3)
+              } else {
+                ctx.fillStyle = "#ff006e" // 通常の赤
+              }
 
-            const normalEnd = intersection.point.add(
-              intersection.normal.scale(0.4),
+              ctx.beginPath()
+              ctx.arc(ptScr.x, ptScr.y, 6, 0, Math.PI * 2)
+              ctx.fill()
+            })
+
+            const primaryInter = intersections[0]
+            const ptScr = project(primaryInter.point)
+            const normalEnd = primaryInter.point.add(
+              primaryInter.normal.scale(0.4),
             )
             const normEndScr = project(normalEnd)
 
@@ -373,7 +396,7 @@
             ctx.stroke()
 
             const normNear = project(
-              intersection.point.add(intersection.normal.scale(0.25)),
+              primaryInter.point.add(primaryInter.normal.scale(0.25)),
             )
             drawArrowHead(
               normNear.x,
@@ -385,12 +408,19 @@
 
             ctx.fillStyle = "#fff"
             ctx.font = "12px monospace"
-            ctx.fillText("Intersecting: true", 15, 25)
+            ctx.fillText(`Intersections: ${intersections.length}`, 15, 25)
             ctx.fillText(
-              `Distance: ${intersection.distance.toFixed(2)}`,
+              `Distance 1: ${intersections[0].distance.toFixed(2)}`,
               15,
               45,
             )
+            if (intersections.length > 1) {
+              ctx.fillText(
+                `Distance 2: ${intersections[1].distance.toFixed(2)}`,
+                15,
+                65,
+              )
+            }
           } else {
             ctx.fillStyle = "#888"
             ctx.font = "12px monospace"
