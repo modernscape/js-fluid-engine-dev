@@ -12,7 +12,19 @@
     "filename": "07_curl_laplacian.html"
   },
   {
-    "title": "Sample 08: 補間（p50）　　　　　　　　　　　　<-- math_utils.h",
+    "title": "Sample 08: 補間（p50）　　　　　　　　　　　<-- math_utils.h",
     "filename": "08_mathutils/08.html"
+  },
+  {
+    "title": "Sample 09: ジオメトリー 平面（p50）　　　　　<-- sphere3.h",
+    "filename": "09_Surface3.html"
+  },
+  {
+    "title": "Sample 09: ジオメトリー 球（p50）　　　　　　<-- sphere3.h",
+    "filename": "09_sphere3.html"
+  },
+  {
+    "title": "Sample 09: ジオメトリー bunny（p50）　　　　<-- sphere3.h",
+    "filename": "09_bunny.html"
   }
 ]
