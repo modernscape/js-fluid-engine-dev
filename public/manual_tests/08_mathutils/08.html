@@ -2,166 +2,171 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <title>Jet Math Utils - Interpolation Sample</title>
+    <title>Jet Math Utils - 2D Interactive Interpolation</title>
     <style>
       body {
-        background: #1e1e1e;
         font-family: sans-serif;
         text-align: center;
-        margin-top: 30px;
+        margin-top: 20px;
+        user-select: none;
       }
       canvas {
-        background: #f0f0f0;
+        background: #f8f9fa;
         border: 1px solid #ccc;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
       }
       .info {
         margin-top: 10px;
-        color: #fff;
-      }
-      h2 {
-        color: #fff;
+        color: #555;
+        font-size: 14px;
       }
     </style>
   </head>
   <body>
-    <h2>流体シミュレーション用補間関数 (Jet Engine) の比較</h2>
-    <canvas id="simCanvas" width="600" height="400"></canvas>
-    <div class="info">マウスを左右に動かすと、補間位置（t）が変化します</div>
+    <h2>流体シミュレーション用 補間関数インタラクティブ比較（2D移動対応）</h2>
+    <canvas id="simCanvas" width="700" height="600"></canvas>
+    <div class="info">
+      4つの制御点（f0〜f3）を**縦にも横にも**ドラッグして動かしてみてください！
+    </div>
 
     <script type="module">
-      import { lerp, catmullRom, monotonicCatmullRom } from "./mathutils.js"
+      import { lerp, catmullRom, monotonicCatmullRom } from "./mathUtils.js"
 
       const canvas = document.getElementById("simCanvas")
       const ctx = canvas.getContext("2d")
 
-      // 制御点 (Control Points)
-      const points = [50, 150, 300, 100] // f0, f1, f2, f3
-      const xCoords = [100, 200, 400, 500]
+      // 4つの制御点（初期のX・Y座標）
+      const points = [
+        { x: 100, y: 450, name: "f0" },
+        { x: 250, y: 150, name: "f1" },
+        { x: 450, y: 300, name: "f2" },
+        { x: 600, y: 450, name: "f3" },
+      ]
 
-      let cursorT = 0.5
+      let draggedIndex = null
 
-      canvas.addEventListener("mousemove", (e) => {
+      // --- マウス操作（ドラッグ＆ドロップ） ---
+      canvas.addEventListener("mousedown", (e) => {
         const rect = canvas.getBoundingClientRect()
         const mouseX = e.clientX - rect.left
-        cursorT = (mouseX - xCoords[1]) / (xCoords[2] - xCoords[1])
-        cursorT = Math.max(0, Math.min(1, cursorT))
+        const mouseY = e.clientY - rect.top
+
+        points.forEach((p, idx) => {
+          const dist = Math.hypot(p.x - mouseX, p.y - mouseY)
+          if (dist < 20) {
+            draggedIndex = idx
+          }
+        })
+      })
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (draggedIndex === null) return
+
+        const rect = canvas.getBoundingClientRect()
+        const mouseX = e.clientX - rect.left
+        const mouseY = e.clientY - rect.top
+
+        // X座標もY座標もマウスに合わせて更新（画面内に収める）
+        points[draggedIndex].x = Math.max(
+          30,
+          Math.min(canvas.width - 30, mouseX),
+        )
+        points[draggedIndex].y = Math.max(
+          30,
+          Math.min(canvas.height - 30, mouseY),
+        )
         draw()
       })
 
+      window.addEventListener("mouseup", () => {
+        draggedIndex = null
+      })
+
+      // --- 描画メイン処理 ---
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-        // 1. 制御点の描画
-        ctx.fillStyle = "#333"
-        points.forEach((y, idx) => {
-          ctx.beginPath()
-          ctx.arc(xCoords[idx], y, 6, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.fillText(`f${idx}`, xCoords[idx] - 4, y - 12)
-        })
+        const p0 = points[0]
+        const p1 = points[1]
+        const p2 = points[2]
+        const p3 = points[3]
 
-        // 2. 各補間曲線の描画（描画順序を赤が一番下になるように変更）
-
-        // ③ Catmull-Rom (赤) 【最下層へ移動】
-        drawCatmullRomCurve()
+        // 1. 各補間曲線の描画（p1.x から p2.x の間を t = 0〜1 で描画）
 
         // ① Nearest
-        drawRobustCurve(
-          (t) => (t < 0.5 ? points[1] : points[2]),
-          "#999",
-          [2, 2],
-        )
-
+        drawCurve((t) => (t < 0.5 ? p1.y : p2.y), p1, p2, "#999", [2, 2])
         // ② Lerp
-        drawRobustCurve((t) => lerp(points[1], points[2], t), "#2196F3", [])
-
-        // ④ Monotonic Catmull-Rom (緑)
-        drawRobustCurve(
-          (t) =>
-            monotonicCatmullRom(points[0], points[1], points[2], points[3], t),
+        drawCurve((t) => lerp(p1.y, p2.y, t), p1, p2, "#2196F3", [])
+        // ③ Monotonic Catmull-Rom (緑)
+        drawCurve(
+          (t) => monotonicCatmullRom(p0.y, p1.y, p2.y, p3.y, t),
+          p1,
+          p2,
           "#4CAF50",
           [],
         )
+        // ④ Catmull-Rom (赤・破線・太め)
+        drawCatmullRomCurve(p0.y, p1.y, p2.y, p3.y, p1, p2)
 
-        // 3. マウス位置のプレビュー
-        const currentVal = catmullRom(
-          points[0],
-          points[1],
-          points[2],
-          points[3],
-          cursorT,
-        )
-        const currentX = xCoords[1] + cursorT * (xCoords[2] - xCoords[1])
+        // 2. 制御点（f0, f1, f2, f3）の描画
+        points.forEach((p) => {
+          ctx.fillStyle = "#333"
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, 8, 0, Math.PI * 2)
+          ctx.fill()
 
-        ctx.strokeStyle = "#FF9800"
-        ctx.setLineDash([4, 4])
-        ctx.beginPath()
-        ctx.moveTo(currentX, 0)
-        ctx.lineTo(currentX, canvas.height)
-        ctx.stroke()
-        ctx.setLineDash([])
-
-        ctx.fillStyle = "#FF9800"
-        ctx.beginPath()
-        ctx.arc(currentX, currentVal, 8, 0, Math.PI * 2)
-        ctx.fill()
+          ctx.font = "bold 14px sans-serif"
+          ctx.fillText(p.name, p.x - 8, p.y - 15)
+        })
 
         drawLegend()
       }
 
-      // 赤いCatmull-Rom専用の描画関数（太めの破線にする）
-      function drawCatmullRomCurve() {
-        ctx.strokeStyle = "#E91E63"
-        ctx.lineWidth = 4.0 // 太さの調整
-
-        // --- ここで破線を指定 ([描画する長さ, 空白の長さ]) ---
-        ctx.setLineDash([6, 4])
-
+      // 汎用カーブ描画関数（X座標も連動させる）
+      function drawCurve(evalFunc, p1, p2, color, dash) {
+        ctx.strokeStyle = color
+        ctx.lineWidth = 2.5
+        ctx.setLineDash(dash)
         ctx.beginPath()
+
         let first = true
         for (let t = 0; t <= 1.0; t += 0.01) {
-          let val = catmullRom(points[0], points[1], points[2], points[3], t)
-          const px = xCoords[1] + t * (xCoords[2] - xCoords[1])
+          const val = evalFunc(t)
+          const px = p1.x + t * (p2.x - p1.x) // X方向もp1からp2へ滑らかにつなぐ
 
-          const minY = -50
-          const maxY = canvas.height + 50
-          const clampedVal = Math.max(minY, Math.min(maxY, val))
+          if (Number.isFinite(val)) {
+            if (first) {
+              ctx.moveTo(px, val)
+              first = false
+            } else {
+              ctx.lineTo(px, val)
+            }
+          }
+        }
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+
+      // 赤いCatmull-Rom専用の描画関数
+      function drawCatmullRomCurve(f0, f1, f2, f3, p1, p2) {
+        ctx.strokeStyle = "#E91E63"
+        ctx.lineWidth = 4.0
+        ctx.setLineDash([6, 4])
+        ctx.beginPath()
+        let first = true
+
+        for (let t = 0; t <= 1.0; t += 0.01) {
+          let val = catmullRom(f0, f1, f2, f3, t)
+          const px = p1.x + t * (p2.x - p1.x)
+
+          const clampedVal = Math.max(-100, Math.min(canvas.height + 100, val))
 
           if (first) {
             ctx.moveTo(px, clampedVal)
             first = false
           } else {
             ctx.lineTo(px, clampedVal)
-          }
-        }
-        ctx.stroke()
-
-        // ほかの描画に影響しないよう破線をリセット
-        ctx.setLineDash([])
-      }
-
-      // 他の線用の汎用描画関数
-      function drawRobustCurve(evalFunc, color, dash) {
-        ctx.strokeStyle = color
-        ctx.lineWidth = 2.0
-        ctx.setLineDash(dash)
-        ctx.beginPath()
-
-        let isDrawing = false
-        for (let t = 0; t <= 1.0; t += 0.01) {
-          const val = evalFunc(t)
-          const px = xCoords[1] + t * (xCoords[2] - xCoords[1])
-
-          if (Number.isFinite(val)) {
-            if (!isDrawing) {
-              ctx.moveTo(px, val)
-              isDrawing = true
-            } else {
-              ctx.lineTo(px, val)
-            }
-          } else {
-            isDrawing = false
           }
         }
         ctx.stroke()
@@ -172,8 +177,8 @@
         const legends = [
           { name: "Nearest", color: "#999" },
           { name: "Lerp (Linear)", color: "#2196F3" },
-          { name: "Catmull-Rom (Red)", color: "#E91E63" },
           { name: "Monotonic Catmull-Rom (Green)", color: "#4CAF50" },
+          { name: "Catmull-Rom (Red / Overshoot)", color: "#E91E63" },
         ]
         ctx.font = "12px sans-serif"
         legends.forEach((l, i) => {
@@ -184,6 +189,7 @@
         })
       }
 
+      // 初期描画
       draw()
     </script>
   </body>

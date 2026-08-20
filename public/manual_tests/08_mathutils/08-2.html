@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Jet Math Utils - Interpolation Sample</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        margin-top: 30px;
+      }
+      /* Canvasの見た目のサイズも必要に応じて調整可能 */
+      canvas {
+        background: #f0f0f0;
+        border: 1px solid #ccc;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .info {
+        margin-top: 10px;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>
+      流体シミュレーション用補間関数 (Jet Engine)
+      の比較（Catmull-Romが重ならない）
+    </h2>
+    <!-- ★ Canvasの高さを 600 に変更 -->
+    <canvas id="simCanvas" width="600" height="600"></canvas>
+    <div class="info">マウスを左右に動かすと、補間位置（t）が変化します</div>
+
+    <script type="module">
+      import { lerp, catmullRom, monotonicCatmullRom } from "./mathUtils.js"
+
+      const canvas = document.getElementById("simCanvas")
+      const ctx = canvas.getContext("2d")
+
+      // 制御点 (f0, f1, f2, f3)
+      // 縦方向に余裕を持たせた配置に調整
+      const points = [500, 100, 150, 500] // 高さを600にしたので大きめの値でも収まります
+      const xCoords = [100, 200, 400, 500]
+
+      let cursorT = 0.5
+
+      canvas.addEventListener("mousemove", (e) => {
+        const rect = canvas.getBoundingClientRect()
+        const mouseX = e.clientX - rect.left
+        cursorT = (mouseX - xCoords[1]) / (xCoords[2] - xCoords[1])
+        cursorT = Math.max(0, Math.min(1, cursorT))
+        draw()
+      })
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        // 1. 制御点の描画
+        ctx.fillStyle = "#333"
+        points.forEach((y, idx) => {
+          ctx.beginPath()
+          ctx.arc(xCoords[idx], y, 6, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.fillText(`f${idx}`, xCoords[idx] - 4, y - 12)
+        })
+
+        // 2. 各補間曲線の描画
+        drawRobustCurve(
+          (t) => (t < 0.5 ? points[1] : points[2]),
+          "#999",
+          [2, 2],
+        ) // Nearest
+        drawRobustCurve((t) => lerp(points[1], points[2], t), "#2196F3", []) // Lerp
+        drawRobustCurve(
+          (t) =>
+            monotonicCatmullRom(points[0], points[1], points[2], points[3], t),
+          "#4CAF50",
+          [],
+        ) // Monotonic (緑)
+
+        // Catmull-Rom (赤・破線・太め)
+        drawCatmullRomCurve()
+
+        // 3. マウス位置のプレビュー
+        const currentVal = catmullRom(
+          points[0],
+          points[1],
+          points[2],
+          points[3],
+          cursorT,
+        )
+        const currentX = xCoords[1] + cursorT * (xCoords[2] - xCoords[1])
+
+        ctx.strokeStyle = "#FF9800"
+        ctx.setLineDash([4, 4])
+        ctx.beginPath()
+        ctx.moveTo(currentX, 0)
+        ctx.lineTo(currentX, canvas.height)
+        ctx.stroke()
+        ctx.setLineDash([])
+
+        ctx.fillStyle = "#FF9800"
+        ctx.beginPath()
+        ctx.arc(currentX, currentVal, 8, 0, Math.PI * 2)
+        ctx.fill()
+
+        drawLegend()
+      }
+
+      function drawCatmullRomCurve() {
+        ctx.strokeStyle = "#E91E63"
+        ctx.lineWidth = 4.0
+        ctx.setLineDash([6, 4])
+        ctx.beginPath()
+        let first = true
+        for (let t = 0; t <= 1.0; t += 0.01) {
+          let val = catmullRom(points[0], points[1], points[2], points[3], t)
+          const px = xCoords[1] + t * (xCoords[2] - xCoords[1])
+
+          const minY = -50
+          const maxY = canvas.height + 50
+          const clampedVal = Math.max(minY, Math.min(maxY, val))
+
+          if (first) {
+            ctx.moveTo(px, clampedVal)
+            first = false
+          } else {
+            ctx.lineTo(px, clampedVal)
+          }
+        }
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+
+      function drawRobustCurve(evalFunc, color, dash) {
+        ctx.strokeStyle = color
+        ctx.lineWidth = 2.0
+        ctx.setLineDash(dash)
+        ctx.beginPath()
+
+        let isDrawing = false
+        for (let t = 0; t <= 1.0; t += 0.01) {
+          const val = evalFunc(t)
+          const px = xCoords[1] + t * (xCoords[2] - xCoords[1])
+
+          if (Number.isFinite(val)) {
+            if (!isDrawing) {
+              ctx.moveTo(px, val)
+              isDrawing = true
+            } else {
+              ctx.lineTo(px, val)
+            }
+          } else {
+            isDrawing = false
+          }
+        }
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+
+      function drawLegend() {
+        const legends = [
+          { name: "Nearest", color: "#999" },
+          { name: "Lerp (Linear)", color: "#2196F3" },
+          { name: "Monotonic Catmull-Rom (Green)", color: "#4CAF50" },
+          { name: "Catmull-Rom (Red / Overshoot)", color: "#E91E63" },
+        ]
+        ctx.font = "12px sans-serif"
+        legends.forEach((l, i) => {
+          ctx.fillStyle = l.color
+          ctx.fillRect(30, 20 + i * 20, 15, 10)
+          ctx.fillStyle = "#333"
+          ctx.fillText(l.name, 55, 29 + i * 20)
+        })
+      }
+
+      draw()
+    </script>
+  </body>
+</html>
