@@ -26,5 +26,9 @@
   {
     "title": "Sample 09: ジオメトリー bunny（p59）　　　　<-- sphere3.h",
     "filename": "09_obj_renderer.html"
+  },
+  {
+    "title": "Sample 09: ジオメトリー 陰関数曲面（p60）　　　　<-- sphere3.h",
+    "filename": "09_implicit_3d.html⁠"
   }
 ]
