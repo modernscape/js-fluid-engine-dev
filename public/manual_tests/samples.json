@@ -16,6 +16,14 @@
     "filename": "04-MassSpringAnimation.html"
   },
   {
+    "title": "Sample 05: 初めての流体シュミレーター 波の重ね合わせ（p00）　<-- ",
+    "filename": "05-particle-bounce.html"
+  },
+  {
+    "title": "Sample 06: 初めての流体シュミレーター 波の重ね合わせ（p00）　<-- ",
+    "filename": "06-ParticleBounceThreeSample.html"
+  },
+  {
     "title": "Sample 07: スカラー場、ベクトル場（p39）　<-- field_tests.cpp",
     "filename": "07_field.html"
   },

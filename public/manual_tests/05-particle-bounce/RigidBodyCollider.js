@@ -1,4 +1,4 @@
-import { Vector3D } from "../../utils/Vector3D.js"
+import { Vector3D } from "../utils/Vector3D.js"
 
 export default class RigidBodyCollider {
   constructor(surface) {

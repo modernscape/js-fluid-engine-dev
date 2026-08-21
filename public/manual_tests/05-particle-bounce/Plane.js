@@ -1,4 +1,4 @@
-import { Vector3D } from "../../utils/Vector3D.js"
+import { Vector3D } from "../utils/Vector3D.js"
 
 export default class Plane {
   constructor(normal = new Vector3D(0, 1, 0), point = new Vector3D(0, 0, 0)) {
