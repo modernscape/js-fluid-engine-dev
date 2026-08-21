@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Top-Down SPH Kernel Field</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0f172a;
+        color: #f8fafc;
+        font-family: sans-serif;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+      canvas {
+        background: #1e293b;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        border-radius: 8px;
+      }
+      .info {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        pointer-events: none;
+      }
+      h1 {
+        font-size: 1.2rem;
+        margin: 0 0 4px 0;
+      }
+      p {
+        font-size: 0.85rem;
+        margin: 0;
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="info">
+      <h1>Top-Down SPH Kernel Field</h1>
+      <p>マウスカーソルで粒子群を優しくかき分けて、道を作ることができます</p>
+    </div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <script>
+      const canvas = document.getElementById("canvas")
+      const ctx = canvas.getContext("2d")
+
+      const width = canvas.width
+      const height = canvas.height
+      // const h = 50.0 // 影響半径
+      // const restDensity = 2.2 // 基準密度
+      // const stiffness = 2.0 // 圧力係数（マイルドにして柔らかく変形させる）
+      // const viscosity = 0.15 // 粘性係数
+      // const damping = 0.92 // 速度減衰（摩擦を強めにしてすぐ落ち着くように）
+
+      const h = 55.0 // 影響半径
+      const restDensity = 2.4 // 少し高めにして密度を維持させる（元: 2.0）
+      const stiffness = 4.0 // 復元力を強くする（元: 1.2）
+      const viscosity = 0.12 // 粘性を少し下げてスッと動きやすくする（元: 0.25）
+      const damping = 0.96 // ブレーキを弱めて勢いを残す（元: 0.85）
+
+      // --- 1. カーネル関数 ---
+      function kernelValue(r, h) {
+        if (r >= h) return 0.0
+        const x = 1.0 - (r * r) / (h * h)
+        return x * x * x
+      }
+
+      let cachedGradient = null
+      function getKernelGradient(ctx, h) {
+        if (cachedGradient) return cachedGradient
+        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, h)
+        const steps = 20
+        for (let i = 0; i <= steps; i++) {
+          const r = (i / steps) * h
+          const val = kernelValue(r, h)
+          const alpha = val * 0.35
+          grad.addColorStop(i / steps, `rgba(56, 189, 248, ${alpha})`)
+        }
+        cachedGradient = grad
+        return grad
+      }
+
+      // --- 2. パーティクルの初期化（密集したブロック状に配置） ---
+      const particles = []
+      const spacing = 16
+      const cols = 16 * 2
+      const rows = 16 * 2
+      const startX = (width - cols * spacing) / 2
+      const startY = (height - rows * spacing) / 2
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          particles.push({
+            x: startX + x * spacing + (Math.random() - 0.5) * 1,
+            y: startY + y * spacing + (Math.random() - 0.5) * 1,
+            vx: 0,
+            vy: 0,
+            density: 0,
+            pressure: 0,
+          })
+        }
+      }
+
+      // マウス管理
+      const mouse = { x: -1000, y: -1000, isDown: false }
+      window.addEventListener("mousemove", (e) => {
+        const rect = canvas.getBoundingClientRect()
+        mouse.x = e.clientX - rect.left
+        mouse.y = e.clientY - rect.top
+      })
+      window.addEventListener("mousedown", () => (mouse.isDown = true))
+      window.addEventListener("mouseup", () => (mouse.isDown = false))
+
+      // --- 3. 物理演算ループ ---
+      function update() {
+        const n = particles.length
+
+        // 1. 密度と圧力の計算
+        for (let i = 0; i < n; i++) {
+          let p_i = particles[i]
+          p_i.density = 0
+          for (let j = 0; j < n; j++) {
+            let p_j = particles[j]
+            let dx = p_j.x - p_i.x
+            let dy = p_j.y - p_i.y
+            let r2 = dx * dx + dy * dy
+            if (r2 < h * h) {
+              let r = Math.sqrt(r2)
+              let q = 1.0 - r / h
+              p_i.density += q * q * q
+            }
+          }
+          if (p_i.density < 0.1) p_i.density = 0.1
+          p_i.pressure = stiffness * (p_i.density - restDensity)
+        }
+
+        // 2. 相互作用の計算
+        for (let i = 0; i < n; i++) {
+          let p_i = particles[i]
+          let fx = 0
+          let fy = 0
+
+          for (let j = 0; j < n; j++) {
+            if (i === j) continue
+            let p_j = particles[j]
+            let dx = p_j.x - p_i.x
+            let dy = p_j.y - p_i.y
+            let r = Math.sqrt(dx * dx + dy * dy)
+
+            if (r > 0 && r < h) {
+              let dirX = dx / r
+              let dirY = dy / r
+              let q = 1.0 - r / h
+
+              // 圧力勾配力
+              let spikyGrad = (-45.0 / (Math.PI * Math.pow(h, 4))) * (q * q)
+              let pressureTerm =
+                (p_i.pressure + p_j.pressure) / (2.0 * p_j.density)
+
+              fx -= pressureTerm * spikyGrad * dirX * 6.0
+              fy -= pressureTerm * spikyGrad * dirY * 6.0
+
+              // 粘性力
+              let vdx = p_j.vx - p_i.vx
+              let vdy = p_j.vy - p_i.vy
+              fx += viscosity * vdx * q
+              fy += viscosity * vdy * q
+            }
+          }
+
+          // マウスインタラクション（影響範囲を狭く、力を控えめにして「細い道」を作る）
+          let mdx = p_i.x - mouse.x
+          let mdy = p_i.y - mouse.y
+          let md = Math.sqrt(mdx * mdx + mdy * mdy)
+          const mouseRadius = 50 // 65 道の細さ・影響範囲
+          if (md < mouseRadius && md > 0) {
+            let mDirX = mdx / md
+            let mDirY = mdy / md
+            // 中心に行くほど強く押し出す（なめらかなスリットを作る）
+            let factor = 1.0 - md / mouseRadius
+            // let pushPower = mouse.isDown ? 2.8 : 1.2
+            let pushPower = mouse.isDown ? 0.2 : 0.1
+            fx += mDirX * pushPower * factor * 5.0
+            fy += mDirY * pushPower * factor * 5.0
+          }
+
+          // 速度更新 ＋ 強めの減衰
+          p_i.vx = (p_i.vx + fx) * damping
+          p_i.vy = (p_i.vy + fy) * damping
+
+          p_i.x += p_i.vx
+          p_i.y += p_i.vy
+
+          // 画面端の壁
+          const wallDamping = -0.3
+          const margin = 20
+          if (p_i.x < margin) {
+            p_i.x = margin
+            p_i.vx *= wallDamping
+          }
+          if (p_i.x > width - margin) {
+            p_i.x = width - margin
+            p_i.vx *= wallDamping
+          }
+          if (p_i.y < margin) {
+            p_i.y = margin
+            p_i.vy *= wallDamping
+          }
+          if (p_i.y > height - margin) {
+            p_i.y = height - margin
+            p_i.vy *= wallDamping
+          }
+        }
+      }
+
+      // --- 4. 描画ループ ---
+      function draw() {
+        ctx.clearRect(0, 0, width, height)
+
+        ctx.globalCompositeOperation = "screen"
+        const grad = getKernelGradient(ctx, h)
+
+        particles.forEach((p) => {
+          ctx.save()
+          ctx.translate(p.x, p.y)
+          ctx.fillStyle = grad
+          ctx.beginPath()
+          ctx.arc(0, 0, h, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.restore()
+        })
+
+        ctx.globalCompositeOperation = "source-over"
+        particles.forEach((p) => {
+          ctx.fillStyle = "#ffffff"
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2)
+          ctx.fill()
+        })
+      }
+
+      function loop() {
+        update()
+        draw()
+        requestAnimationFrame(loop)
+      }
+
+      loop()
+    </script>
+  </body>
+</html>
