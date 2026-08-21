@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hash Grid Neighbor Searcher</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #121212;
+        color: #e0e0e0;
+        font-family: sans-serif;
+        overflow: hidden; /* スクロールを完全に禁止 */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      h1 {
+        font-size: 1rem;
+        margin: 0 0 4px 0;
+      }
+      #info {
+        margin-bottom: 6px;
+        font-size: 0.8rem;
+        background: #1e1e1e;
+        padding: 4px 12px;
+        border-radius: 4px;
+        border: 1px solid #333;
+        display: flex;
+        gap: 12px;
+      }
+      canvas {
+        background: #181818;
+        border: 1px solid #444;
+        border-radius: 6px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        cursor: crosshair;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hash Grid Neighbor Searcher (3,000 Particles)</h1>
+    <div id="info">
+      <span>近傍粒子数: <span id="count">0</span></span>
+      <span>|</span>
+      <span>重み総和: <span id="weight-sum">0.00</span></span>
+    </div>
+    <!-- 画面に確実に収まるようサイズを少し縮小 (700x400) -->
+    <canvas id="canvas" width="700" height="400"></canvas>
+
+    <script>
+      // --- 1. C++のロジックを模した 2D Hash Grid Searcher ---
+      class PointHashGridSearcher2D {
+        constructor(gridSpacing, cols, rows) {
+          this.gridSpacing = gridSpacing
+          this.cols = cols
+          this.rows = rows
+          this.buckets = new Map()
+          this.points = []
+        }
+
+        build(points) {
+          this.points = points
+          this.buckets.clear()
+          for (let i = 0; i < points.length; i++) {
+            const p = points[i]
+            const key = this.getHashKeyFromPosition(p.x, p.y)
+            if (!this.buckets.has(key)) {
+              this.buckets.set(key, [])
+            }
+            this.buckets.get(key).push(i)
+          }
+        }
+
+        getBucketIndex(x, y) {
+          return {
+            x: Math.floor(x / this.gridSpacing),
+            y: Math.floor(y / this.gridSpacing),
+          }
+        }
+
+        getHashKeyFromBucketIndex(idx) {
+          let wx = idx.x % this.cols
+          let wy = idx.y % this.rows
+          if (wx < 0) wx += this.cols
+          if (wy < 0) wy += this.rows
+          return `${wx},${wy}`
+        }
+
+        getHashKeyFromPosition(x, y) {
+          const idx = this.getBucketIndex(x, y)
+          return this.getHashKeyFromBucketIndex(idx)
+        }
+
+        getNearbyKeys(positionX, positionY) {
+          const originIndex = this.getBucketIndex(positionX, positionY)
+          const nearbyIndices = [
+            { x: originIndex.x, y: originIndex.y },
+            { x: originIndex.x, y: originIndex.y },
+            { x: originIndex.x, y: originIndex.y },
+            { x: originIndex.x, y: originIndex.y },
+          ]
+
+          if ((originIndex.x + 0.5) * this.gridSpacing <= positionX) {
+            nearbyIndices[2].x += 1
+            nearbyIndices[3].x += 1
+          } else {
+            nearbyIndices[2].x -= 1
+            nearbyIndices[3].x -= 1
+          }
+
+          if ((originIndex.y + 0.5) * this.gridSpacing <= positionY) {
+            nearbyIndices[1].y += 1
+            nearbyIndices[3].y += 1
+          } else {
+            nearbyIndices[1].y -= 1
+            nearbyIndices[3].y -= 1
+          }
+
+          return {
+            bucketIndices: nearbyIndices,
+            keys: nearbyIndices.map((idx) =>
+              this.getHashKeyFromBucketIndex(idx),
+            ),
+          }
+        }
+
+        forEachNearbyPoint(originX, originY, radius, callback) {
+          if (this.buckets.size === 0) return
+
+          const { keys } = this.getNearbyKeys(originX, originY)
+          const queryRadiusSquared = radius * radius
+
+          for (let i = 0; i < 4; i++) {
+            const bucket = this.buckets.get(keys[i])
+            if (!bucket) continue
+
+            for (let j = 0; j < bucket.length; j++) {
+              const pointIndex = bucket[j]
+              const p = this.points[pointIndex]
+              const dx = p.x - originX
+              const dy = p.y - originY
+              const rSquared = dx * dx + dy * dy
+              if (rSquared <= queryRadiusSquared) {
+                callback(pointIndex, p, Math.sqrt(rSquared))
+              }
+            }
+          }
+        }
+      }
+
+      // --- 2. メインの描画・インタラクション処理 ---
+      const canvas = document.getElementById("canvas")
+      const ctx = canvas.getContext("2d")
+      const countSpan = document.getElementById("count")
+      const weightSumSpan = document.getElementById("weight-sum")
+
+      const SEARCH_RADIUS = 50
+      const GRID_SPACING = 100
+
+      const cols = Math.ceil(canvas.width / GRID_SPACING)
+      const rows = Math.ceil(canvas.height / GRID_SPACING)
+
+      const numPoints = 3000
+      const points = []
+      for (let i = 0; i < numPoints; i++) {
+        points.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+        })
+      }
+
+      const searcher = new PointHashGridSearcher2D(GRID_SPACING, cols, rows)
+      searcher.build(points)
+
+      let mouseX = canvas.width / 2
+      let mouseY = canvas.height / 2
+
+      function updatePointer(e) {
+        const rect = canvas.getBoundingClientRect()
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY
+        mouseX = clientX - rect.left
+        mouseY = clientY - rect.top
+      }
+
+      window.addEventListener("mousemove", updatePointer)
+      window.addEventListener("touchmove", updatePointer)
+      window.addEventListener("touchstart", updatePointer)
+
+      // --- 3. メインループ ---
+      function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        // ① グリッドの全体描画
+        ctx.strokeStyle = "#222"
+        ctx.lineWidth = 1
+        for (let x = 0; x <= canvas.width; x += GRID_SPACING) {
+          ctx.beginPath()
+          ctx.moveTo(x, 0)
+          ctx.lineTo(x, canvas.height)
+          ctx.stroke()
+        }
+        for (let y = 0; y <= canvas.height; y += GRID_SPACING) {
+          ctx.beginPath()
+          ctx.moveTo(0, y)
+          ctx.lineTo(canvas.width, y)
+          ctx.stroke()
+        }
+
+        // ② 調査対象の4つのマスのハイライト
+        const { bucketIndices } = searcher.getNearbyKeys(mouseX, mouseY)
+        ctx.fillStyle = "rgba(255, 165, 0, 0.12)"
+        ctx.strokeStyle = "rgba(255, 165, 0, 0.4)"
+        ctx.lineWidth = 1.5
+
+        const uniqueCells = Array.from(
+          new Set(bucketIndices.map((b) => `${b.x},${b.y}`)),
+        ).map((key) => {
+          const [x, y] = key.split(",").map(Number)
+          return { x, y }
+        })
+
+        uniqueCells.forEach((cell) => {
+          const rx = cell.x * GRID_SPACING
+          const ry = cell.y * GRID_SPACING
+          ctx.fillRect(rx, ry, GRID_SPACING, GRID_SPACING)
+          ctx.strokeRect(rx, ry, GRID_SPACING, GRID_SPACING)
+        })
+
+        // ③ 検索範囲（円）の描画
+        ctx.strokeStyle = "rgba(0, 150, 255, 0.5)"
+        ctx.fillStyle = "rgba(0, 150, 255, 0.03)"
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(mouseX, mouseY, SEARCH_RADIUS, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+
+        // ④ 近傍点の探索と重み付け総和の計算
+        const nearbyIndices = new Set()
+        const weights = new Map()
+        let totalWeightSum = 0
+
+        searcher.forEachNearbyPoint(
+          mouseX,
+          mouseY,
+          SEARCH_RADIUS,
+          (pIdx, p, dist) => {
+            nearbyIndices.add(pIdx)
+            const weight = 1.0 - dist / SEARCH_RADIUS
+            weights.set(pIdx, Math.max(0, weight))
+            totalWeightSum += weight
+          },
+        )
+
+        countSpan.textContent = nearbyIndices.size
+        weightSumSpan.textContent = totalWeightSum.toFixed(2)
+
+        // ⑤ 点群の描画
+        for (let i = 0; i < points.length; i++) {
+          const p = points[i]
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, 2, 0, Math.PI * 2)
+
+          if (nearbyIndices.has(i)) {
+            const w = weights.get(i)
+            ctx.fillStyle = `rgb(${Math.floor(255 * (1 - w))}, ${Math.floor(255 * w)}, 255)`
+            ctx.fill()
+          } else {
+            ctx.fillStyle = "#444"
+            ctx.fill()
+          }
+        }
+
+        requestAnimationFrame(loop)
+      }
+
+      loop()
+    </script>
+  </body>
+</html>

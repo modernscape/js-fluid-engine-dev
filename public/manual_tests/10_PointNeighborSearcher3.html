@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Point Neighbor Searcher Sample</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0d1117;
+        overflow: hidden;
+        color: #c9d1d9;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        user-select: none;
+      }
+      canvas {
+        display: block;
+        cursor: crosshair;
+      }
+      #info {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        pointer-events: none;
+        background: rgba(22, 27, 34, 0.85);
+        border: 1px solid #30363d;
+        padding: 12px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        line-height: 1.6;
+        backdrop-filter: blur(4px);
+      }
+      #info span {
+        color: #58a6ff;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      <strong>Point Neighbor Searcher</strong><br />
+      画面内をドラッグまたはタッチして動かしてください<br />
+      検索半径: <span id="radius-val">120</span> px<br />
+      近傍点の数: <span id="neighbor-count">0</span> 個
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+      const canvas = document.getElementById("canvas")
+      const ctx = canvas.getContext("2d")
+      const countEl = document.getElementById("neighbor-count")
+
+      let width = (canvas.width = window.innerWidth)
+      let height = (canvas.height = window.innerHeight)
+
+      window.addEventListener("resize", () => {
+        width = canvas.width = window.innerWidth
+        height = canvas.height = window.innerHeight
+        initPoints()
+      })
+
+      let points = []
+      const SEARCH_RADIUS = 120
+      const GRID_SPACING = 15
+      const AREA_SCALE = 1.5 // ★配置エリアを画面サイズの1.5倍に拡大
+
+      // 拡大されたエリアに粒子を生成
+      function initPoints() {
+        points = []
+        const areaWidth = width * AREA_SCALE
+        const areaHeight = height * AREA_SCALE
+
+        // 画面中央に配置されるようオフセットを計算
+        const offsetX = (width - areaWidth) / 2
+        const offsetY = (height - areaHeight) / 2
+
+        for (let x = GRID_SPACING / 2; x < areaWidth; x += GRID_SPACING) {
+          for (let y = GRID_SPACING / 2; y < areaHeight; y += GRID_SPACING) {
+            points.push({
+              x: offsetX + x + (Math.random() - 0.5) * 4,
+              y: offsetY + y + (Math.random() - 0.5) * 4,
+              r: 2.5,
+            })
+          }
+        }
+      }
+
+      initPoints()
+
+      // タッチ・マウス位置の管理（初期位置は画面中央）
+      let pointer = {
+        x: width / 2,
+        y: height / 2,
+      }
+
+      function updatePointer(clientX, clientY) {
+        pointer.x = clientX
+        pointer.y = clientY
+      }
+
+      window.addEventListener("mousemove", (e) => {
+        updatePointer(e.clientX, e.clientY)
+      })
+
+      window.addEventListener("pointermove", (e) => {
+        updatePointer(e.clientX, e.clientY)
+      })
+
+      window.addEventListener(
+        "touchmove",
+        (e) => {
+          if (e.touches.length > 0) {
+            updatePointer(e.touches[0].clientX, e.touches[0].clientY)
+          }
+        },
+        { passive: true },
+      )
+
+      window.addEventListener(
+        "touchstart",
+        (e) => {
+          if (e.touches.length > 0) {
+            updatePointer(e.touches[0].clientX, e.touches[0].clientY)
+          }
+        },
+        { passive: true },
+      )
+
+      // RGBカラーの線形補間（グラデーション用）
+      function lerpColor(c1, c2, t) {
+        return {
+          r: Math.round(c1.r + (c2.r - c1.r) * t),
+          g: Math.round(c1.g + (c2.g - c1.g) * t),
+          b: Math.round(c1.b + (c2.b - c1.b) * t),
+        }
+      }
+
+      const colorBase = { r: 80, g: 90, b: 110 } // 範囲外のグレー
+      const colorOuter = { r: 50, g: 150, b: 255 } // 円の外周付近（ブルー）
+      const colorInner = { r: 0, g: 255, b: 200 } // 中心のグラデーション（ミントグリーン）
+
+      function animate() {
+        ctx.clearRect(0, 0, width, height)
+
+        let neighborCount = 0
+
+        // すべての粒子をループし、タッチ座標からの距離を計算
+        for (let i = 0; i < points.length; i++) {
+          const p = points[i]
+          const dx = p.x - pointer.x
+          const dy = p.y - pointer.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+
+          let col = colorBase
+          let radius = p.r
+
+          // 検索半径内に入っている場合
+          if (dist <= SEARCH_RADIUS) {
+            neighborCount++
+            // 0.0 (外周) ～ 1.0 (中心) のウェイト
+            const weight = 1 - dist / SEARCH_RADIUS
+            // 距離に応じたグラデーションカラーを算出
+            col = lerpColor(colorOuter, colorInner, weight)
+            // 近いほど粒子を大きくする
+            radius = p.r + weight * 2.0
+          }
+
+          // 描画
+          ctx.fillStyle = `rgb(${col.r}, ${col.g}, ${col.b})`
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+          ctx.fill()
+        }
+
+        // 近傍点の数を画面に更新
+        countEl.textContent = neighborCount
+
+        // 検索範囲の円を描画
+        ctx.strokeStyle = "rgba(0, 255, 200, 0.3)"
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.arc(pointer.x, pointer.y, SEARCH_RADIUS, 0, Math.PI * 2)
+        ctx.stroke()
+
+        // タッチ位置の中心点ガイド
+        ctx.fillStyle = "rgba(0, 255, 200, 0.8)"
+        ctx.beginPath()
+        ctx.arc(pointer.x, pointer.y, 3, 0, Math.PI * 2)
+        ctx.fill()
+
+        requestAnimationFrame(animate)
+      }
+
+      animate()
+    </script>
+  </body>
+</html>
