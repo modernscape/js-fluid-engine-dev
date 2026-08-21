@@ -1,26 +1,26 @@
 [
   {
-    "title": "Sample 01: 初めての流体シュミレーター 波の重ね合わせ（p00）　<-- ",
+    "title": "Sample 01: 1D Wave Propagation（p3）　<-- ",
     "filename": "01-wave-propagation.html"
   },
   {
-    "title": "Sample 02: 初めての流体シュミレーター 波の重ね合わせ（p00）　<-- ",
+    "title": "Sample 02: Sine Animation with Decay（p67）　<-- ",
     "filename": "02-SineAnimation.html"
   },
   {
-    "title": "Sample 03: 初めての流体シュミレーター 波の重ね合わせ（p00）　<-- ",
+    "title": "Sample 03: Physics Animation (Substeps)（p69）　<-- ",
     "filename": "03-PhysicsAnimation.html"
   },
   {
-    "title": "Sample 04: 初めての流体シュミレーター 波の重ね合わせ（p00）　<-- ",
+    "title": "Sample 04: Mass-Spring Chain Animation（p70）　<-- ",
     "filename": "04-MassSpringAnimation.html"
   },
   {
-    "title": "Sample 05: 初めての流体シュミレーター 波の重ね合わせ（p00）　<-- ",
+    "title": "Sample 05: Particle System Bounce Simulation（p88）　<-- ",
     "filename": "05-particle-bounce.html"
   },
   {
-    "title": "Sample 06: 初めての流体シュミレーター 波の重ね合わせ（p00）　<-- ",
+    "title": "Sample 06: Particle System Bounce Simulation 3D（p88）　<-- ",
     "filename": "06-ParticleBounceThreeSample.html"
   },
   {
