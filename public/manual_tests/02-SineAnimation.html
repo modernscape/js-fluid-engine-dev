@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Fluid Engine Development in JS</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body {
+        background-color: #000;
+      }
+      canvas {
+        display: block;
+        margin: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="simulationCanvas" width="800" height="800"></canvas>
+    <div id="msg"></div>
+
+    <script type="module">
+      import { Frame } from "/src/utils/Frame.js"
+      import { SineAnimation } from "/src/utils/SineAnimation.js"
+      import { SineWithDecayAnimation } from "/src/utils/SineAnimation.js"
+
+      // -----------------------------------------------------------------
+      // メインのサンプルクラス (必ずこの名前でエクスポート)
+      // -----------------------------------------------------------------
+      class SineAnimationSample {
+        constructor(canvas) {
+          this.canvas = canvas
+          this.ctx = canvas.getContext("2d")
+
+          this.frame = new Frame()
+          this.sineAnim = new SineAnimation()
+          this.decayAnim = new SineWithDecayAnimation()
+
+          this.maxFrames = 240
+          this.historySine = []
+          this.historyDecay = []
+
+          this.animationFrameId = null
+        }
+
+        draw() {
+          const { ctx, canvas } = this
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+          // 中央の基準軸を描画
+          ctx.strokeStyle = "#334155"
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.moveTo(0, canvas.height / 2)
+          ctx.lineTo(canvas.width, canvas.height / 2)
+          ctx.stroke()
+
+          const dx = canvas.width / this.maxFrames
+          const centerY = canvas.height / 2
+
+          // 1. 減衰なしサイン波の軌跡（青）
+          ctx.beginPath()
+          ctx.strokeStyle = "#38bdf8"
+          ctx.lineWidth = 2
+          for (let i = 0; i < this.historySine.length; ++i) {
+            const x = i * dx
+            const y = centerY - this.historySine[i] * 100
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
+
+          // 2. 減衰ありサイン波の軌跡（オレンジ）
+          ctx.beginPath()
+          ctx.strokeStyle = "#fb923c"
+          ctx.lineWidth = 2
+          for (let i = 0; i < this.historyDecay.length; ++i) {
+            const x = i * dx
+            const y = centerY - this.historyDecay[i] * 100
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
+        }
+
+        start() {
+          const loop = () => {
+            if (this.frame.index >= this.maxFrames) {
+              this.frame.index = 0
+              this.historySine = []
+              this.historyDecay = []
+            }
+
+            this.sineAnim.update(this.frame)
+            this.decayAnim.update(this.frame)
+
+            this.historySine.push(this.sineAnim.y)
+            this.historyDecay.push(this.decayAnim.y)
+
+            this.draw()
+
+            this.frame.advance()
+            this.animationFrameId = requestAnimationFrame(loop)
+          }
+          loop()
+        }
+
+        stop() {
+          if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId)
+          }
+        }
+      }
+      async function initSimulation() {
+        const c = document.getElementById("simulationCanvas")
+
+        // 例1: Sample01 のインスタンス化や起動を非同期で行う場合
+        const sample = new SineAnimationSample(c)
+        console.log(sample)
+
+        // もし初期化用の非同期メソッド (init など) がある場合
+        // await sample.init();
+
+        // start() 自体が async の場合、または非同期処理を内包している場合
+        await sample.start()
+      }
+
+      // 実行
+      initSimulation().catch((err) => {
+        console.error("シミュレーションの起動に失敗しました:", err)
+      })
+    </script>
+  </body>
+</html>

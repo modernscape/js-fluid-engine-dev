@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Fluid Engine Development in JS</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <canvas id="simulationCanvas" width="800" height="400"></canvas>
+    <div id="msg"></div>
+    <!-- <script type="module" src="/src/main.js"></script> -->
+    <div style="color: #000">
+      <label><input type="checkbox" id="toggleWaveA" checked /> 波A</label>
+      <label><input type="checkbox" id="toggleWaveB" /> 波B</label>
+      <label><input type="checkbox" id="toggleWaveC" /> 波C</label>
+    </div>
+    <script>
+      const kBufferSize = 80
+
+      class Sample01 {
+        constructor(canvas) {
+          this.canvas = canvas
+          this.ctx = canvas.getContext("2d")
+          this.waveA = { x: 0.0, speed: 1, length: 0.8, maxHeight: 0.5 } //波 1
+          this.waveB = { x: 1.0, speed: -1.0, length: 1.2, maxHeight: 0.4 } //波 2
+          this.waveC = { x: 0.4, speed: 0.4, length: 1.0, maxHeight: 0.3 } //波 3
+          this.heightField = new Float64Array(kBufferSize)
+          this.timeInterval = 1.0 / 60 // 60 FPS
+          this.animationFrameId = null
+        }
+
+        updateWave(timeInterval, state) {
+          state.x += timeInterval * state.speed
+          if (state.x > 1.0) {
+            state.speed *= -1.0
+            state.x = 1.0 + timeInterval * state.speed
+          } else if (state.x < 0.0) {
+            state.speed *= -1.0
+            state.x = timeInterval * state.speed
+          }
+        }
+
+        accumulateWave(wave) {
+          const quarterWaveLength = 0.25 * wave.length
+          const start = Math.floor((wave.x - quarterWaveLength) * kBufferSize)
+          const end = Math.floor((wave.x + quarterWaveLength) * kBufferSize)
+
+          for (let i = start; i < end; ++i) {
+            let iNew = i
+            if (i < 0) {
+              iNew = -i - 1
+            } else if (i >= kBufferSize) {
+              iNew = 2 * kBufferSize - i - 1
+            }
+
+            const distance = Math.abs((i + 0.5) / kBufferSize - wave.x)
+            const height =
+              wave.maxHeight *
+              0.5 *
+              (Math.cos(
+                Math.min((distance * Math.PI) / quarterWaveLength, Math.PI),
+              ) +
+                1.0)
+
+            if (iNew >= 0 && iNew < kBufferSize) {
+              this.heightField[iNew] += height
+            }
+          }
+        }
+
+        draw() {
+          const { ctx, canvas, heightField } = this
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+          // 背景のグリッドや軸を描画
+          ctx.strokeStyle = "#334155"
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.moveTo(0, canvas.height / 2)
+          ctx.lineTo(canvas.width, canvas.height / 2)
+          ctx.stroke()
+
+          // 波のラインを描画
+          ctx.beginPath()
+          ctx.strokeStyle = "#38bdf8"
+          ctx.lineWidth = 3
+
+          const dx = canvas.width / kBufferSize
+          for (let i = 0; i < kBufferSize; ++i) {
+            const x = i * dx
+            // 高さをCanvas座標に変換（上がマイナス、下がプラスのため反転）
+            const y = canvas.height / 2 - heightField[i] * 150
+
+            if (i === 0) {
+              ctx.moveTo(x, y)
+            } else {
+              ctx.lineTo(x, y)
+            }
+          }
+          ctx.stroke()
+        }
+
+        start() {
+          const chkA = document.getElementById("toggleWaveA")
+          const chkB = document.getElementById("toggleWaveB")
+          const chkC = document.getElementById("toggleWaveC")
+
+          const loop = () => {
+            this.heightField.fill(0.0)
+
+            if (chkA.checked) {
+              this.updateWave(this.timeInterval, this.waveA)
+              this.accumulateWave(this.waveA)
+            }
+            if (chkB.checked) {
+              this.updateWave(this.timeInterval, this.waveB)
+              this.accumulateWave(this.waveB)
+            }
+            if (chkC.checked) {
+              this.updateWave(this.timeInterval, this.waveC)
+              this.accumulateWave(this.waveC)
+            }
+
+            this.draw()
+            this.animationFrameId = requestAnimationFrame(loop)
+          }
+          loop()
+        }
+
+        stop() {
+          if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId)
+          }
+        }
+      }
+
+      async function initSimulation() {
+        const c = document.getElementById("simulationCanvas")
+
+        // 例1: Sample01 のインスタンス化や起動を非同期で行う場合
+        const sample = new Sample01(c)
+        console.log(sample)
+
+        // もし初期化用の非同期メソッド (init など) がある場合
+        // await sample.init();
+
+        // start() 自体が async の場合、または非同期処理を内包している場合
+        await sample.start()
+      }
+
+      // 実行
+      initSimulation().catch((err) => {
+        console.error("シミュレーションの起動に失敗しました:", err)
+      })
+    </script>
+  </body>
+</html>
