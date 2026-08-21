@@ -1,34 +1,33 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jet 陰関数サーフェス - 3D描画サンプル</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #1a1a1a;
-            font-family: sans-serif;
-        }
-        #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 15px;
-            border-radius: 5px;
-            pointer-events: none;
-            font-size: 14px;
-        }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #1a1a1a;
+        font-family: sans-serif;
+      }
+      #info {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px 15px;
+        border-radius: 5px;
+        pointer-events: none;
+        font-size: 14px;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div id="info">
-        <h2>Jet 陰関数曲面 (Sphere3) 3Dビジュアライザー</h2>
-        <p>マウスドラッグ: 回転 / スクロール: ズーム</p>
+      <h2>Jet 陰関数曲面 (Sphere3) 3Dビジュアライザー</h2>
+      <p>マウスドラッグ: 回転 / スクロール: ズーム</p>
     </div>
 
     <!-- Three.js CDNの読み込み -->
@@ -36,129 +35,156 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        // --- 1. 自作したJetのクラス群（移植版） ---
+      // --- 1. 自作したJetのクラス群（移植版） ---
 
-        class Vector3D {
-            constructor(x = 0, y = 0, z = 0) {
-                this.x = x; this.y = y; this.z = z;
-            }
-            sub(v) { return new Vector3D(this.x - v.x, this.y - v.y, this.z - v.z); }
-            distanceTo(v) { return this.sub(v).length(); }
-            length() { return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z); }
+      class Vector3D {
+        constructor(x = 0, y = 0, z = 0) {
+          this.x = x
+          this.y = y
+          this.z = z
+        }
+        sub(v) {
+          return new Vector3D(this.x - v.x, this.y - v.y, this.z - v.z)
+        }
+        distanceTo(v) {
+          return this.sub(v).length()
+        }
+        length() {
+          return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z)
+        }
+      }
+
+      class Transform3 {
+        constructor() {}
+        toLocal(point) {
+          return point
+        }
+      }
+
+      class Surface3 {
+        constructor(transform = new Transform3(), isNormalFlipped = false) {
+          this.transform = transform
+          this.isNormalFlipped = isNormalFlipped
+        }
+      }
+
+      class ImplicitSurface3 extends Surface3 {
+        constructor(transform = new Transform3(), isNormalFlipped = false) {
+          super(transform, isNormalFlipped)
+        }
+        signedDistance(otherPoint) {
+          const localPoint = this.transform.toLocal(otherPoint)
+          const sd = this.signedDistanceLocal(localPoint)
+          return this.isNormalFlipped ? -sd : sd
+        }
+      }
+
+      // 移植した Sphere3 クラス
+      class Sphere3 extends ImplicitSurface3 {
+        constructor(
+          center = new Vector3D(0, 0, 0),
+          radius = 1.0,
+          transform = new Transform3(),
+          isNormalFlipped = false,
+        ) {
+          super(transform, isNormalFlipped)
+          this.center = center
+          this.radius = radius
         }
 
-        class Transform3 {
-            constructor() {}
-            toLocal(point) { return point; }
+        // 陰関数としての符号付き距離関数 (SDF)
+        signedDistanceLocal(otherPoint) {
+          return otherPoint.distanceTo(this.center) - this.radius
         }
+      }
 
-        class Surface3 {
-            constructor(transform = new Transform3(), isNormalFlipped = false) {
-                this.transform = transform;
-                this.isNormalFlipped = isNormalFlipped;
-            }
-        }
+      // --- 2. Three.js による 3D シーンの構築 ---
 
-        class ImplicitSurface3 extends Surface3 {
-            constructor(transform = new Transform3(), isNormalFlipped = false) {
-                super(transform, isNormalFlipped);
-            }
-            signedDistance(otherPoint) {
-                const localPoint = this.transform.toLocal(otherPoint);
-                const sd = this.signedDistanceLocal(localPoint);
-                return this.isNormalFlipped ? -sd : sd;
-            }
-        }
+      // シーン、カメラ、レンダラーの初期化
+      const scene = new THREE.Scene()
+      scene.background = new THREE.Color(0x111111)
 
-        // 移植した Sphere3 クラス
-        class Sphere3 extends ImplicitSurface3 {
-            constructor(center = new Vector3D(0, 0, 0), radius = 1.0, transform = new Transform3(), isNormalFlipped = false) {
-                super(transform, isNormalFlipped);
-                this.center = center;
-                this.radius = radius;
-            }
+      const camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000,
+      )
+      camera.position.set(0, 2, 5)
 
-            // 陰関数としての符号付き距離関数 (SDF)
-            signedDistanceLocal(otherPoint) {
-                return otherPoint.distanceTo(this.center) - this.radius;
-            }
-        }
+      const renderer = new THREE.WebGLRenderer({ antialias: true })
+      renderer.setSize(window.innerWidth, window.innerHeight)
+      renderer.shadowMap.enabled = true
+      document.body.appendChild(renderer.domElement)
 
-        // --- 2. Three.js による 3D シーンの構築 ---
+      // カメラコントロール（マウス操作用）
+      const controls = new THREE.OrbitControls(camera, renderer.domElement)
+      controls.enableDamping = true
 
-        // シーン、カメラ、レンダラーの初期化
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111111);
+      // ライティング（陰影をつけて立体感を出す）
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4)
+      scene.add(ambientLight)
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 2, 5);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
+      directionalLight.position.set(5, 10, 7)
+      directionalLight.castShadow = true
+      scene.add(directionalLight)
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
+      // グリッドヘルパー（床）
+      const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 222222)
+      gridHelper.position.y = -1.5
+      scene.add(gridHelper)
 
-        // カメラコントロール（マウス操作用）
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
+      // --- 3. Sphere3 インスタンスの作成とThree.jsへの連携 ---
 
-        // ライティング（陰影をつけて立体感を出す）
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-        scene.add(ambientLight);
+      // Jetライブラリの Sphere3 インスタンスを作成（中心: (0, 0, 0), 半径: 1.5）
+      const jetSphere = new Sphere3(new Vector3D(0, 0, 0), 1.5)
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(5, 10, 7);
-        directionalLight.castShadow = true;
-        scene.add(directionalLight);
+      // 陰関数サーフェスのパラメータ（中心と半径）を使ってThree.jsのメッシュを生成
+      const geometry = new THREE.SphereGeometry(jetSphere.radius, 64, 64)
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x3498db,
+        roughness: 0.3,
+        metalness: 0.2,
+        wireframe: false, // trueにするとワイヤーフレーム表示になります
+      })
 
-        // グリッドヘルパー（床）
-        const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 222222);
-        gridHelper.position.y = -1.5;
-        scene.add(gridHelper);
+      const sphereMesh = new THREE.Mesh(geometry, material)
+      // Jet側の中心座標をThree.jsに反映
+      sphereMesh.position.set(
+        jetSphere.center.x,
+        jetSphere.center.y,
+        jetSphere.center.z,
+      )
+      sphereMesh.castShadow = true
+      scene.add(sphereMesh)
 
-        // --- 3. Sphere3 インスタンスの作成とThree.jsへの連携 ---
+      // デバッグ用として、SDFの表面近くの判定をコンソールに出力してみる
+      const samplePoint = new Vector3D(2.0, 0, 0)
+      console.log(
+        `点 (2, 0, 0) からのSDF値:`,
+        jetSphere.signedDistance(samplePoint),
+      ) // 期待値: 0.5
 
-        // Jetライブラリの Sphere3 インスタンスを作成（中心: (0, 0, 0), 半径: 1.5）
-        const jetSphere = new Sphere3(new Vector3D(0, 0, 0), 1.5);
+      // ウィンドウリサイズ対応
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight
+        camera.updateProjectionMatrix()
+        renderer.setSize(window.innerWidth, window.innerHeight)
+      })
 
-        // 陰関数サーフェスのパラメータ（中心と半径）を使ってThree.jsのメッシュを生成
-        const geometry = new THREE.SphereGeometry(jetSphere.radius, 64, 64);
-        const material = new THREE.MeshStandardMaterial({
-            color: 0x3498db,
-            roughness: 0.3,
-            metalness: 0.2,
-            wireframe: false // trueにするとワイヤーフレーム表示になります
-        });
+      // アニメーションループ
+      function animate() {
+        requestAnimationFrame(animate)
 
-        const sphereMesh = new THREE.Mesh(geometry, material);
-        // Jet側の中心座標をThree.jsに反映
-        sphereMesh.position.set(jetSphere.center.x, jetSphere.center.y, jetSphere.center.z);
-        sphereMesh.castShadow = true;
-        scene.add(sphereMesh);
+        // ちょっとだけ球体をふわふわ動かして陰関数クラスと連動させる例
+        const time = Date.now() * 0.001
+        // sphereMesh.position.y = Math.sin(time) * 0.2; // 必要なら有効化
 
-        // デバッグ用として、SDFの表面近くの判定をコンソールに出力してみる
-        const samplePoint = new Vector3D(2.0, 0, 0);
-        console.log(`点 (2, 0, 0) からのSDF値:`, jetSphere.signedDistance(samplePoint)); // 期待値: 0.5
-
-        // ウィンドウリサイズ対応
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // アニメーションループ
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // ちょっとだけ球体をふわふわ動かして陰関数クラスと連動させる例
-            const time = Date.now() * 0.001;
-            // sphereMesh.position.y = Math.sin(time) * 0.2; // 必要なら有効化
-
-            controls.update();
-            renderer.render(scene, camera);
-        }
-        animate();
+        controls.update()
+        renderer.render(scene, camera)
+      }
+      animate()
     </script>
-</body>
+  </body>
 </html>
