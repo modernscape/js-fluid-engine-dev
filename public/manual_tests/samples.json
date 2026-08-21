@@ -12,6 +12,10 @@
     "filename": "03-PhysicsAnimation.html"
   },
   {
+    "title": "Sample 04: 初めての流体シュミレーター 波の重ね合わせ（p00）　<-- ",
+    "filename": "04-MassSpringAnimation.html"
+  },
+  {
     "title": "Sample 07: スカラー場、ベクトル場（p39）　<-- field_tests.cpp",
     "filename": "07_field.html"
   },

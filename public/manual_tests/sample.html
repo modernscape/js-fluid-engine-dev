@@ -18,6 +18,25 @@
     <canvas id="simulationCanvas" width="800" height="800"></canvas>
     <div id="msg"></div>
 
-    <script type="module" src=""></script>
+    <script type="module">
+      async function initSimulation() {
+        const c = document.getElementById("simulationCanvas")
+
+        // 例1: Sample01 のインスタンス化や起動を非同期で行う場合
+        const sample = new Sample01(c)
+        console.log(sample)
+
+        // もし初期化用の非同期メソッド (init など) がある場合
+        // await sample.init();
+
+        // start() 自体が async の場合、または非同期処理を内包している場合
+        await sample.start()
+      }
+
+      // 実行
+      initSimulation().catch((err) => {
+        console.error("シミュレーションの起動に失敗しました:", err)
+      })
+    </script>
   </body>
 </html>
